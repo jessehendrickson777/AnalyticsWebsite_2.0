@@ -771,6 +771,9 @@ function buildFiscalMonths(fiscalYear) {
   const months = {};
   const hasExtraWeek = isFiftyThreeWeekFiscalYear(fiscalYear);
   let startDate = getFiscalYearStart(fiscalYear);
+  // Running week number within the fiscal year, so each month can report the
+  // span of fiscal weeks it covers
+  let weekCursor = 1;
 
   for (let i = 0; i < 12; i++) {
     const fiscalPeriod = i + 1;
@@ -785,10 +788,15 @@ function buildFiscalMonths(fiscalYear) {
       start: formatDate(startDate),
       end: formatDate(endDate),
       weeks,
+      days: weeks * 7,
       fiscalPeriod,
       fiscalYear,
+      quarter: Math.floor(i / 3) + 1,
+      startWeek: weekCursor,
+      endWeek: weekCursor + weeks - 1,
     };
 
+    weekCursor += weeks;
     startDate = addDays(endDate, 1);
   }
   return months;
@@ -840,160 +848,448 @@ function isDateBetween(dateStr) {
   return currentFiscalMonth;
 }
 
+/* ============================================
+   FISCAL CALENDAR RENDERING
+
+   Both views draw into #fiscal-calendar-container: the year overview (12 month
+   cards grouped by quarter) and the day-by-day detail for one fiscal month.
+   selectedFiscalPeriod decides which one.
+   ============================================ */
+
+// null shows the year overview; 1-12 shows that period's day grid.
+let selectedFiscalPeriod = null;
+
+const FC_WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const FC_CALENDAR_MONTHS_FULL = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const FC_CALENDAR_MONTHS_ABBR = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+// Icons are inline SVG rather than Font Awesome classes so the calendar looks
+// the same even if the icon stylesheet is slow or blocked.
+const FC_ICON_LEFT = "M15 5l-7 7 7 7";
+const FC_ICON_RIGHT = "M9 5l7 7-7 7";
+const FC_ICON_BACK = "M10 5l-7 7 7 7M3 12h18";
+const FC_ICON_CALENDAR =
+  "M7 3v3m10-3v3M3.5 9.5h17M5 6h14a1.5 1.5 0 011.5 1.5v11A1.5 1.5 0 0119 20H5a1.5 1.5 0 01-1.5-1.5v-11A1.5 1.5 0 015 6z";
+
+function fcIcon(path, strokeWidth) {
+  return (
+    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="' +
+    path +
+    '" stroke="currentColor" stroke-width="' +
+    (strokeWidth || 2) +
+    '" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  );
+}
+
+function fcLongDate(date) {
+  return `${FC_CALENDAR_MONTHS_FULL[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function fcShortDate(date) {
+  return `${FC_CALENDAR_MONTHS_ABBR[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
+function fcWeeksLabel(count) {
+  return `${count} ${count === 1 ? "week" : "weeks"}`;
+}
+
+// The fiscal year as a whole: its span, its length, and its 12 months in order
+function fcYearSummary(fiscalYear) {
+  const months = Object.values(getFiscalMonthsForYear(fiscalYear));
+  const isLong = isFiftyThreeWeekFiscalYear(fiscalYear);
+
+  return {
+    fiscalYear,
+    months,
+    start: months[0].start,
+    end: months[months.length - 1].end,
+    weeks: isLong ? 53 : 52,
+    isFiftyThreeWeek: isLong,
+  };
+}
+
+// The window of fiscal years the picker offers
+function fcYearBounds() {
+  const current = getCurrentFiscalYear();
+  return {
+    current,
+    min: current - FISCAL_YEAR_RANGE,
+    max: current + FISCAL_YEAR_RANGE,
+  };
+}
+
+/* ---------- Entry points ---------- */
+
+// Called by the tab switcher and by the year controls. Always lands on the
+// year overview, so re-opening the tab never leaves a stale month showing.
 function renderFiscalCalendar(fiscalYear) {
-  const currentFiscalYear = getCurrentFiscalYear();
+  const bounds = fcYearBounds();
+
   selectedFiscalYear =
     typeof fiscalYear === "number"
       ? fiscalYear
-      : selectedFiscalYear || currentFiscalYear;
+      : selectedFiscalYear || bounds.current;
+  selectedFiscalPeriod = null;
 
-  const months = getFiscalMonthsForYear(selectedFiscalYear);
+  drawFiscalCalendar();
+}
+
+function showFiscalMonth(fiscalYear, fiscalPeriod) {
+  selectedFiscalYear = fiscalYear;
+  selectedFiscalPeriod = fiscalPeriod;
+  drawFiscalCalendar();
+}
+
+function drawFiscalCalendar() {
+  const container = document.getElementById("fiscal-calendar-container");
+  if (!container) return;
+
+  container.innerHTML =
+    fcMasthead() +
+    fcToolbar() +
+    (selectedFiscalPeriod === null ? fcYearView() : fcMonthView());
+
+  fcWireEvents(container);
+}
+
+/* ---------- Masthead and toolbar ---------- */
+
+function fcMasthead() {
+  const year = fcYearSummary(selectedFiscalYear);
+  const today = new Date();
+  const currentMonth = isDateBetween(today);
+
+  return `
+    <header class="fc-masthead">
+      <div>
+        <span class="fc-eyebrow">Fiscal Calendar</span>
+        <div class="fc-titlerow">
+          <h2 class="fc-title">FY${year.fiscalYear}</h2>
+          ${
+            year.isFiftyThreeWeek
+              ? '<span class="fc-badge53">53-week year</span>'
+              : ""
+          }
+        </div>
+        <p class="fc-span">${fcLongDate(parseFiscalDate(year.start))} &ndash; ${fcLongDate(
+          parseFiscalDate(year.end)
+        )} &middot; ${fcWeeksLabel(year.weeks)}</p>
+      </div>
+      <div class="fc-todaycard">
+        <span class="fc-todaycard__label">Today</span>
+        <span class="fc-todaycard__date">${fcLongDate(today)}</span>
+        <span class="fc-todaycard__period">${
+          currentMonth
+            ? `Period ${currentMonth.fiscalPeriod} &middot; FY${currentMonth.fiscalYear}`
+            : ""
+        }</span>
+      </div>
+    </header>`;
+}
+
+function fcToolbar() {
+  const bounds = fcYearBounds();
+  const atYearView = selectedFiscalPeriod === null;
+
+  let options = "";
+  for (let year = bounds.min; year <= bounds.max; year++) {
+    options +=
+      `<option value="${year}"${year === selectedFiscalYear ? " selected" : ""}>` +
+      `FY${year}${year === bounds.current ? " (current)" : ""}</option>`;
+  }
+
+  return `
+    <nav class="fc-toolbar" aria-label="Fiscal year navigation">
+      <button type="button" class="fc-btn fc-btn--icon" data-fc="prev-year"
+              title="Previous fiscal year" aria-label="Previous fiscal year"
+              ${selectedFiscalYear <= bounds.min ? "disabled" : ""}>
+        ${fcIcon(FC_ICON_LEFT)}
+      </button>
+      <div class="fc-select">
+        <select data-fc="year-select" aria-label="Fiscal year">${options}</select>
+      </div>
+      <button type="button" class="fc-btn fc-btn--icon" data-fc="next-year"
+              title="Next fiscal year" aria-label="Next fiscal year"
+              ${selectedFiscalYear >= bounds.max ? "disabled" : ""}>
+        ${fcIcon(FC_ICON_RIGHT)}
+      </button>
+      <button type="button" class="fc-btn" data-fc="current-year"
+              ${
+                selectedFiscalYear === bounds.current && atYearView
+                  ? "disabled"
+                  : ""
+              }>
+        ${fcIcon(FC_ICON_CALENDAR, 1.7)} Current FY
+      </button>
+      <span class="fc-toolbar__spacer"></span>
+      ${
+        atYearView
+          ? ""
+          : `<button type="button" class="fc-btn" data-fc="back">${fcIcon(
+              FC_ICON_BACK
+            )} Back to FY${selectedFiscalYear}</button>`
+      }
+    </nav>`;
+}
+
+/* ---------- Year overview ---------- */
+
+function fcYearView() {
+  const year = fcYearSummary(selectedFiscalYear);
   const currentMonth = isDateBetween(new Date());
-  const calendarContainer = document.getElementById(
-    "fiscal-calendar-container"
-  );
-  calendarContainer.innerHTML = "";
+  let html = '<div class="fc-content">';
 
-  calendarContainer.appendChild(
-    buildFiscalYearSelector(selectedFiscalYear, currentFiscalYear)
-  );
+  for (let quarter = 1; quarter <= 4; quarter++) {
+    const months = year.months.filter((month) => month.quarter === quarter);
+    const weeks = months.reduce((total, month) => total + month.weeks, 0);
 
-  Object.keys(months).forEach((key, i) => {
-    let quarter = Math.floor(i / 3) + 1;
-    if (i % 3 === 0) {
-      const quarterDiv = document.createElement("div");
-      quarterDiv.className = "fiscal-quarter";
-      quarterDiv.innerHTML = `<h2>Quarter ${quarter}</h2>`;
-      calendarContainer.appendChild(quarterDiv);
+    html += `
+      <section class="fc-quarter">
+        <div class="fc-quarter__head">
+          <h3>Quarter ${quarter}</h3>
+          <span class="fc-quarter__meta">${fcShortDate(
+            parseFiscalDate(months[0].start)
+          )} &ndash; ${fcShortDate(
+            parseFiscalDate(months[months.length - 1].end)
+          )} &middot; ${fcWeeksLabel(weeks)}</span>
+        </div>
+        <div class="fc-months">
+          ${months
+            .map((month) => fcMonthCard(month, currentMonth))
+            .join("")}
+        </div>
+      </section>`;
+  }
+
+  return html + "</div>";
+}
+
+function fcMonthCard(month, currentMonth) {
+  const isCurrent =
+    currentMonth &&
+    currentMonth.fiscalPeriod === month.fiscalPeriod &&
+    currentMonth.fiscalYear === month.fiscalYear;
+
+  return `
+    <article class="fc-month${isCurrent ? " fc-is-current" : ""}"
+             role="button" tabindex="0"
+             data-fc="month" data-fc-period="${month.fiscalPeriod}"
+             aria-label="${month.name}, period ${month.fiscalPeriod}, ${month.start} to ${month.end}">
+      <div class="fc-month__head">
+        <h3 class="fc-month__name">${month.name}</h3>
+        <span class="fc-month__chips">
+          ${
+            isCurrent
+              ? '<span class="fc-chip fc-chip--current">Current</span>'
+              : ""
+          }
+          <span class="fc-chip fc-chip--period">P${month.fiscalPeriod}</span>
+        </span>
+      </div>
+      <p class="fc-month__range">${month.start} &ndash; ${month.end}</p>
+      <dl class="fc-month__stats">
+        <div><dt>Weeks</dt><dd>${month.weeks}</dd></div>
+        <div><dt>Days</dt><dd>${month.days}</dd></div>
+        <div><dt>FY weeks</dt><dd>${month.startWeek}&ndash;${month.endWeek}</dd></div>
+      </dl>
+    </article>`;
+}
+
+/* ---------- Month detail ---------- */
+
+// The period `step` months away, or null if it falls outside the picker range
+function fcStepPeriod(fiscalYear, fiscalPeriod, step) {
+  let period = fiscalPeriod + step;
+  let year = fiscalYear;
+
+  if (period < 1) {
+    year -= 1;
+    period = 12;
+  } else if (period > 12) {
+    year += 1;
+    period = 1;
+  }
+
+  const bounds = fcYearBounds();
+  if (year < bounds.min || year > bounds.max) return null;
+
+  return { fiscalYear: year, fiscalPeriod: period };
+}
+
+function fcStepButton(target, step) {
+  const label = step < 0 ? "Previous fiscal month" : "Next fiscal month";
+
+  return `<button type="button" class="fc-btn fc-btn--icon" data-fc="step"
+                  data-fc-step="${step}" title="${label}" aria-label="${label}"
+                  ${target ? "" : "disabled"}>
+            ${fcIcon(step < 0 ? FC_ICON_LEFT : FC_ICON_RIGHT)}
+          </button>`;
+}
+
+function fcMonthView() {
+  const year = fcYearSummary(selectedFiscalYear);
+  const month = year.months[selectedFiscalPeriod - 1];
+  const prev = fcStepPeriod(selectedFiscalYear, selectedFiscalPeriod, -1);
+  const next = fcStepPeriod(selectedFiscalYear, selectedFiscalPeriod, 1);
+
+  return `
+    <div class="fc-content">
+      <div class="fc-detail__bar">
+        <div class="fc-detail__title">
+          <h3>${month.name} &middot; FY${month.fiscalYear}</h3>
+          <p>Period ${month.fiscalPeriod} &middot; Quarter ${
+    month.quarter
+  } &middot; ${fcWeeksLabel(month.weeks)} &middot; ${fcLongDate(
+    parseFiscalDate(month.start)
+  )} &ndash; ${fcLongDate(parseFiscalDate(month.end))}</p>
+        </div>
+        <div class="fc-detail__nav">
+          ${fcStepButton(prev, -1)}
+          ${fcStepButton(next, 1)}
+        </div>
+      </div>
+      ${fcWeekGrid(month)}
+      <p class="fc-footnote">Fiscal weeks run Sunday through Saturday. Week
+        numbers are counted from the start of FY${month.fiscalYear}.</p>
+    </div>`;
+}
+
+function fcWeekGrid(month) {
+  const start = parseFiscalDate(month.start);
+  const todayStamp = formatDate(new Date());
+
+  let html = '<div class="fc-weeks"><div class="fc-weeks__corner">Week</div>';
+  FC_WEEKDAY_NAMES.forEach((name) => {
+    html += `<div class="fc-weeks__dow">${name}</div>`;
+  });
+
+  for (let week = 0; week < month.weeks; week++) {
+    const weekStart = addDays(start, week * 7);
+
+    html += `
+      <div class="fc-wk">
+        <span class="fc-wk__n">Wk ${month.startWeek + week}</span>
+        <span class="fc-wk__d">${weekStart.getMonth() + 1}/${weekStart.getDate()}</span>
+      </div>`;
+
+    for (let offset = 0; offset < 7; offset++) {
+      const day = addDays(start, week * 7 + offset);
+      const isToday = formatDate(day) === todayStamp;
+      const isWeekend = offset === 0 || offset === 6;
+
+      // Label the first cell of the grid and the 1st of each calendar month,
+      // so the calendar months stay readable inside the fiscal month.
+      let label = "";
+      if (day.getDate() === 1) {
+        label = FC_CALENDAR_MONTHS_ABBR[day.getMonth()];
+        if (day.getMonth() === 0) {
+          label += " &rsquo;" + String(day.getFullYear()).slice(-2);
+        }
+      } else if (week === 0 && offset === 0) {
+        label = FC_CALENDAR_MONTHS_ABBR[day.getMonth()];
+      }
+
+      html += `
+        <div class="fc-day${isWeekend ? " fc-is-weekend" : ""}${
+        isToday ? " fc-is-today" : ""
+      }">
+          <span class="fc-day__mon">${label}</span>
+          <span class="fc-day__num">${day.getDate()}</span>
+          ${isToday ? '<span class="fc-day__today">Today</span>' : ""}
+        </div>`;
     }
-    const month = months[key];
-    const isCurrent =
-      currentMonth &&
-      currentMonth.month === month.name &&
-      currentMonth.fiscalYear === month.fiscalYear;
-
-    const monthDiv = document.createElement("div");
-    monthDiv.className = isCurrent ? "fiscal-calendar current" : "fiscal-calendar";
-    monthDiv.innerHTML = `
-      <h3>${month.name}</h3>
-      <p>${month.start} - ${month.end}</p>
-      <p>Weeks: ${month.weeks}</p>
-      <p class="fiscal-period-label">Period ${month.fiscalPeriod} &middot; FY${month.fiscalYear}</p>
-    `;
-    monthDiv.addEventListener("click", () => {
-      renderMonthCalendar(month);
-    });
-    calendarContainer.appendChild(monthDiv);
-  });
-}
-
-// Fiscal year picker shown at the top of the fiscal calendar tab
-function buildFiscalYearSelector(selectedYear, currentFiscalYear) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "fiscal-year-selector";
-
-  const prevBtn = document.createElement("button");
-  prevBtn.className = "fiscal-year-nav";
-  prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
-  prevBtn.title = "Previous fiscal year";
-
-  const label = document.createElement("label");
-  label.setAttribute("for", "fiscal-year-select");
-  label.textContent = "Fiscal Year:";
-
-  const select = document.createElement("select");
-  select.id = "fiscal-year-select";
-  for (
-    let year = currentFiscalYear - FISCAL_YEAR_RANGE;
-    year <= currentFiscalYear + FISCAL_YEAR_RANGE;
-    year++
-  ) {
-    const option = document.createElement("option");
-    option.value = year;
-    option.textContent = year === currentFiscalYear ? `FY${year} (current)` : `FY${year}`;
-    if (year === selectedYear) option.selected = true;
-    select.appendChild(option);
   }
 
-  const nextBtn = document.createElement("button");
-  nextBtn.className = "fiscal-year-nav";
-  nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
-  nextBtn.title = "Next fiscal year";
-
-  const todayBtn = document.createElement("button");
-  todayBtn.className = "fiscal-year-today";
-  todayBtn.innerHTML = '<i class="fas fa-calendar-day"></i> Current FY';
-  todayBtn.disabled = selectedYear === currentFiscalYear;
-
-  // Keep the arrows inside the range the dropdown offers
-  prevBtn.disabled = selectedYear <= currentFiscalYear - FISCAL_YEAR_RANGE;
-  nextBtn.disabled = selectedYear >= currentFiscalYear + FISCAL_YEAR_RANGE;
-
-  prevBtn.addEventListener("click", () =>
-    renderFiscalCalendar(selectedYear - 1)
-  );
-  nextBtn.addEventListener("click", () =>
-    renderFiscalCalendar(selectedYear + 1)
-  );
-  todayBtn.addEventListener("click", () =>
-    renderFiscalCalendar(currentFiscalYear)
-  );
-  select.addEventListener("change", (e) =>
-    renderFiscalCalendar(Number(e.target.value))
-  );
-
-  wrapper.appendChild(prevBtn);
-  wrapper.appendChild(label);
-  wrapper.appendChild(select);
-  wrapper.appendChild(nextBtn);
-  wrapper.appendChild(todayBtn);
-  return wrapper;
+  return html + "</div>";
 }
 
-// Render day-by-day calendar for a fiscal month
-function renderMonthCalendar(month) {
-  const container = document.getElementById("month-calendar-container");
-  container.innerHTML = `<h2>${month.name} FY${month.fiscalYear} &middot; ${month.start} - ${month.end}</h2>`;
-  container.classList.add("show");
-  document.getElementById("fiscal-calendar-container").classList.remove("show");
+/* ---------- Events ---------- */
 
-  // Generate days
-  const startDate = new Date(month.start);
-  const endDate = new Date(month.end);
-  let days = [];
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    days.push(new Date(d));
-  }
+// Delegated once on the container, so redrawing its contents cannot stack up
+// duplicate handlers.
+let fcEventsWired = false;
 
-  // Render days in a grid
-  const grid = document.createElement("div");
-  grid.className = "month-grid";
-  days.forEach((day) => {
-    const dayDiv = document.createElement("div");
-    dayDiv.className = "month-day";
-    const weekday = day.toLocaleDateString(undefined, { weekday: "short" });
-    const dateStr = day.toISOString().split("T")[0];
-    dayDiv.innerHTML = `<div class="weekday">${weekday}</div><div class="date">${dateStr}</div>`;
-    grid.appendChild(dayDiv);
+function fcWireEvents(container) {
+  if (fcEventsWired) return;
+  fcEventsWired = true;
+
+  container.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-fc]");
+    if (!action || action.disabled) return;
+
+    switch (action.dataset.fc) {
+      case "prev-year":
+        renderFiscalCalendar(selectedFiscalYear - 1);
+        break;
+      case "next-year":
+        renderFiscalCalendar(selectedFiscalYear + 1);
+        break;
+      case "current-year":
+        renderFiscalCalendar(fcYearBounds().current);
+        break;
+      case "back":
+        renderFiscalCalendar(selectedFiscalYear);
+        break;
+      case "month":
+        showFiscalMonth(selectedFiscalYear, Number(action.dataset.fcPeriod));
+        break;
+      case "step": {
+        const target = fcStepPeriod(
+          selectedFiscalYear,
+          selectedFiscalPeriod,
+          Number(action.dataset.fcStep)
+        );
+        if (target) showFiscalMonth(target.fiscalYear, target.fiscalPeriod);
+        break;
+      }
+    }
   });
 
-  // Add back button
-  const backBtn = document.createElement("button");
-  backBtn.className = "calendar-back-button";
-  backBtn.innerHTML =
-    '<i class="fa fa-arrow-left"></i> Back to Fiscal Calendar';
-  backBtn.addEventListener("click", () => {
-    container.classList.remove("show");
-    // Always hide all other tab contents
-    document
-      .querySelectorAll(".tabContent")
-      .forEach((tab) => tab.classList.remove("show"));
-    document.getElementById("fiscal-calendar-container").classList.add("show");
+  container.addEventListener("change", (event) => {
+    if (event.target.matches('[data-fc="year-select"]')) {
+      renderFiscalCalendar(Number(event.target.value));
+    }
   });
 
-  container.appendChild(grid);
-  container.appendChild(backBtn);
+  container.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    const card = event.target.closest('[data-fc="month"]');
+    if (!card) return;
+
+    event.preventDefault();
+    showFiscalMonth(selectedFiscalYear, Number(card.dataset.fcPeriod));
+  });
 }
+
 
 // Initial render
 document.addEventListener("DOMContentLoaded", () => renderFiscalCalendar());

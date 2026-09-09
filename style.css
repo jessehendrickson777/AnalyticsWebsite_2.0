@@ -1024,218 +1024,713 @@ body {
   display: none;
 }
 
+/* ============================================
+   FISCAL CALENDAR
+   Everything here is scoped to #fiscal-calendar-container and every class is
+   prefixed fc-, so these rules cannot reach the rest of the site.
+   ============================================ */
 #fiscal-calendar-container {
+  /* Design tokens */
+  --fc-brand: #10457f;
+  --fc-brand-strong: #0b3260;
+  --fc-brand-light: #17558f;
+  --fc-brand-soft: #eaf1fa;
+  --fc-brand-line: #c5daf1;
+
+  --fc-ink: #0f172a;
+  --fc-ink-2: #33415a;
+  --fc-muted: #6a7789;
+  --fc-muted-2: #8d99a8;
+
+  --fc-line: #e2e8f1;
+  --fc-line-soft: #eef2f7;
+  --fc-surface: #ffffff;
+  --fc-canvas: #f4f7fb;
+  --fc-weekend: #f1f5fa;
+
+  --fc-radius: 12px;
+  --fc-radius-sm: 8px;
+  --fc-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  --fc-shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08),
+    0 1px 3px rgba(15, 23, 42, 0.06);
+  --fc-shadow-brand: 0 6px 18px rgba(16, 69, 127, 0.16);
+
   display: none;
-  flex-wrap: wrap;
-  padding: 1rem;
-  gap: 1rem;
-  justify-content: center;
-  align-items: flex-start;
-  width: 100%;
-  box-sizing: border-box;
-  background: linear-gradient(to top, #92ceff, #c6ddfe);
-}
-
-#fiscal-calendar-container.show,
-#month-calendar-container.show {
-  display: block;
-}
-
-#month-calendar-container {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  box-sizing: border-box;
-  padding-top: 2rem;
-  background: linear-gradient(to top, #92ceff, #c6ddfe);
-}
-
-.fiscal-calendar {
-  background-color: #f5f5f5;
-  border-radius: 6px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  padding: 1rem;
-  width: 200px;
-  text-align: center;
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-}
-
-.fiscal-calendar:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  background: #e6f7ff;
-}
-
-.fiscal-calendar h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #004d99;
-}
-
-.fiscal-calendar p {
-  margin: 1rem;
-  font-weight: 700;
-  font-size: 1rem;
-  color: #333;
-}
-
-.fiscal-calendar p.fiscal-period-label {
-  margin: 0.5rem 1rem 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #666;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.fiscal-calendar.current {
-  border: 3px solid #004d99;
-  background: #e6f7ff;
-}
-
-/* Fiscal year picker */
-.fiscal-year-selector {
-  width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  box-sizing: border-box;
-}
-
-.fiscal-year-selector label {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #004d99;
-}
-
-.fiscal-year-selector select {
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  background: #f5f5f5;
-  border: 1px solid #004d99;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.fiscal-year-nav,
-.fiscal-year-today {
-  padding: 0.5rem 0.85rem;
-  font-size: 1rem;
-  color: white;
-  background-color: #004d99;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease;
-}
-
-.fiscal-year-nav:hover:not(:disabled),
-.fiscal-year-today:hover:not(:disabled) {
-  background-color: #0066cc;
-}
-
-.fiscal-year-nav:disabled,
-.fiscal-year-today:disabled {
-  background-color: #9bb3c9;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.month-grid {
-  gap: 1rem;
-  padding: 1rem;
-  margin: 2rem;
-  border: 5px solid #000000;
-  border-radius: 10px;
-  background: #e8e8e8;
-}
-
-.month-day .weekday {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #004d99;
-  margin-bottom: 0.2rem;
-}
-
-.month-day .date {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.fiscal-quarter {
-  width: 100%;
-  text-align: center;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-/* .fiscal-quarter {
-  border: 1px solid #ccc;
-  margin: 1rem 0;
-  padding: 1rem;
-  display: flex;
-  gap: 1rem;
-  background: #f9f9f9;
-} */
-.fiscal-month {
-  border: 1px solid #888;
-  padding: 0.5rem;
-  cursor: pointer;
-  background: #fff;
-  flex: 1;
-  transition: box-shadow 0.2s;
-}
-.fiscal-month:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  background: #e6f7ff;
-}
-.month-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1rem;
-  margin: 2rem;
-}
-.month-day {
-  border: 1px solid #bbb;
-  padding: 0.5rem;
-  background: #fff;
-  text-align: center;
-  font-size: 0.9rem;
-}
-
-#month-calendar-container h2,
-.fiscal-quarter h2 {
-  margin-top: 0;
-  color: #004d99;
-  font-size: 2rem;
-  text-align: center;
-}
-
-.calendar-back-button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  color: white;
-  background-color: #004d99;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  margin: 1rem;
-  transition: background-color 0.3s ease;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--fc-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 #fiscal-calendar-container.show {
-  display: flex;
+  display: block;
+  width: calc(100% - 2rem);
+  max-width: 1400px;
+  margin: 1.5rem auto 2.5rem;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--fc-canvas);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1),
+    0 2px 6px rgba(15, 23, 42, 0.06);
 }
+
+/* The site has no global reset, so normalize inside the panel only. */
+#fiscal-calendar-container *,
+#fiscal-calendar-container *::before,
+#fiscal-calendar-container *::after {
+  box-sizing: border-box;
+}
+
+#fiscal-calendar-container h2,
+#fiscal-calendar-container h3,
+#fiscal-calendar-container p,
+#fiscal-calendar-container dl,
+#fiscal-calendar-container dt,
+#fiscal-calendar-container dd {
+  margin: 0;
+}
+
+#fiscal-calendar-container h2,
+#fiscal-calendar-container h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* This div is no longer rendered into; the month view draws inside the panel
+   above. Kept so the tab switcher's reference to it stays valid. */
+#month-calendar-container {
+  display: none;
+}
+
+/* ---------- Masthead ---------- */
+#fiscal-calendar-container .fc-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem 2rem;
+  padding: 1.6rem clamp(1rem, 4vw, 2.25rem);
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--fc-brand-strong) 0%,
+    var(--fc-brand) 55%,
+    var(--fc-brand-light) 100%
+  );
+}
+
+#fiscal-calendar-container .fc-eyebrow {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+#fiscal-calendar-container .fc-titlerow {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+#fiscal-calendar-container .fc-title {
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  line-height: 1.1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-badge53 {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#fiscal-calendar-container .fc-span {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-todaycard {
+  min-width: 12.5rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--fc-radius-sm);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#fiscal-calendar-container .fc-todaycard__label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+#fiscal-calendar-container .fc-todaycard__date {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.02rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-todaycard__period {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Toolbar ---------- */
+#fiscal-calendar-container .fc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem clamp(1rem, 4vw, 2.25rem);
+  background: var(--fc-surface);
+  border-bottom: 1px solid var(--fc-line);
+}
+
+#fiscal-calendar-container .fc-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+#fiscal-calendar-container .fc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.35rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--fc-line);
+  border-radius: var(--fc-radius-sm);
+  background: var(--fc-surface);
+  color: var(--fc-ink-2);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#fiscal-calendar-container .fc-btn:hover:not(:disabled) {
+  border-color: var(--fc-brand-line);
+  background: var(--fc-brand-soft);
+  color: var(--fc-brand-strong);
+}
+
+#fiscal-calendar-container .fc-btn:focus-visible {
+  outline: 2px solid var(--fc-brand);
+  outline-offset: 2px;
+}
+
+#fiscal-calendar-container .fc-btn:disabled {
+  color: var(--fc-muted-2);
+  background: var(--fc-line-soft);
+  cursor: not-allowed;
+}
+
+#fiscal-calendar-container .fc-btn--icon {
+  width: 2.35rem;
+  padding: 0;
+}
+
+#fiscal-calendar-container .fc-btn svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+#fiscal-calendar-container .fc-select {
+  position: relative;
+}
+
+#fiscal-calendar-container .fc-select select {
+  height: 2.35rem;
+  padding: 0 2.1rem 0 0.8rem;
+  border: 1px solid var(--fc-line);
+  border-radius: var(--fc-radius-sm);
+  background: var(--fc-surface);
+  color: var(--fc-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+#fiscal-calendar-container .fc-select select:hover {
+  border-color: var(--fc-brand-line);
+}
+
+#fiscal-calendar-container .fc-select select:focus-visible {
+  outline: 2px solid var(--fc-brand);
+  outline-offset: 2px;
+}
+
+#fiscal-calendar-container .fc-select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: -0.3rem;
+  border-right: 2px solid var(--fc-muted);
+  border-bottom: 2px solid var(--fc-muted);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* ---------- Year view: quarters and month cards ---------- */
+#fiscal-calendar-container .fc-content {
+  padding: clamp(1rem, 3vw, 1.9rem) clamp(1rem, 4vw, 2.25rem)
+    clamp(1.75rem, 4vw, 2.75rem);
+}
+
+#fiscal-calendar-container .fc-quarter + .fc-quarter {
+  margin-top: 1.75rem;
+}
+
+#fiscal-calendar-container .fc-quarter__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.9rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--fc-line);
+}
+
+#fiscal-calendar-container .fc-quarter__head h3 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--fc-brand);
+}
+
+#fiscal-calendar-container .fc-quarter__meta {
+  font-size: 0.82rem;
+  color: var(--fc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.9rem;
+}
+
+#fiscal-calendar-container .fc-month {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.05rem 0.85rem;
+  border: 1px solid var(--fc-line);
+  border-radius: var(--fc-radius);
+  background: var(--fc-surface);
+  box-shadow: var(--fc-shadow-sm);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+#fiscal-calendar-container .fc-month::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+#fiscal-calendar-container .fc-month:hover,
+#fiscal-calendar-container .fc-month:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--fc-brand-line);
+  box-shadow: var(--fc-shadow-md);
+  outline: none;
+}
+
+#fiscal-calendar-container .fc-month:hover::before,
+#fiscal-calendar-container .fc-month:focus-visible::before {
+  background: var(--fc-brand-line);
+}
+
+#fiscal-calendar-container .fc-month.fc-is-current {
+  border-color: var(--fc-brand);
+  background: linear-gradient(180deg, var(--fc-brand-soft) 0%, #fff 62%);
+  box-shadow: var(--fc-shadow-brand);
+}
+
+#fiscal-calendar-container .fc-month.fc-is-current::before {
+  background: var(--fc-brand);
+}
+
+#fiscal-calendar-container .fc-month__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+#fiscal-calendar-container .fc-month__name {
+  font-size: 1.14rem;
+  color: var(--fc-ink);
+}
+
+#fiscal-calendar-container .fc-month__chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+#fiscal-calendar-container .fc-chip {
+  padding: 0.16rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-chip--period {
+  border: 1px solid var(--fc-line);
+  background: var(--fc-line-soft);
+  color: var(--fc-ink-2);
+}
+
+#fiscal-calendar-container .fc-chip--current {
+  background: var(--fc-brand);
+  color: #fff;
+  text-transform: uppercase;
+}
+
+#fiscal-calendar-container .fc-month__range {
+  margin-top: 0.55rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: var(--fc-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-month__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--fc-line-soft);
+}
+
+#fiscal-calendar-container .fc-month__stats > div {
+  min-width: 0;
+}
+
+#fiscal-calendar-container .fc-month__stats dt {
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fc-muted-2);
+}
+
+#fiscal-calendar-container .fc-month__stats dd {
+  margin-top: 0.1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--fc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Month view: week-by-week grid ---------- */
+#fiscal-calendar-container .fc-detail__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1.1rem;
+}
+
+#fiscal-calendar-container .fc-detail__title h3 {
+  font-size: 1.32rem;
+  color: var(--fc-ink);
+}
+
+#fiscal-calendar-container .fc-detail__title p {
+  margin-top: 0.2rem;
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-detail__nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#fiscal-calendar-container .fc-weeks {
+  display: grid;
+  grid-template-columns: 4.75rem repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--fc-line);
+  border-radius: var(--fc-radius);
+  background: var(--fc-surface);
+  box-shadow: var(--fc-shadow-sm);
+  overflow: hidden;
+}
+
+#fiscal-calendar-container .fc-weeks__corner,
+#fiscal-calendar-container .fc-weeks__dow {
+  padding: 0.6rem 0.5rem;
+  background: var(--fc-brand-strong);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+#fiscal-calendar-container .fc-weeks__corner {
+  text-align: left;
+  padding-left: 0.75rem;
+}
+
+#fiscal-calendar-container .fc-wk {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid var(--fc-line);
+  border-right: 1px solid var(--fc-brand-line);
+  background: var(--fc-brand-soft);
+}
+
+#fiscal-calendar-container .fc-wk__n {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--fc-brand-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-wk__d {
+  margin-top: 0.05rem;
+  font-size: 0.68rem;
+  color: var(--fc-brand);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-day {
+  position: relative;
+  min-height: 4.15rem;
+  padding: 0.4rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--fc-line);
+  border-left: 1px solid var(--fc-line-soft);
+  text-align: right;
+}
+
+#fiscal-calendar-container .fc-day.fc-is-weekend {
+  background: var(--fc-weekend);
+}
+
+#fiscal-calendar-container .fc-day__mon {
+  display: block;
+  height: 0.95rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fc-brand);
+  text-align: left;
+}
+
+#fiscal-calendar-container .fc-day__num {
+  display: block;
+  font-size: 1.06rem;
+  font-weight: 500;
+  color: var(--fc-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+#fiscal-calendar-container .fc-day.fc-is-today {
+  background: var(--fc-brand-soft);
+  box-shadow: inset 0 0 0 2px var(--fc-brand);
+}
+
+#fiscal-calendar-container .fc-day.fc-is-today .fc-day__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  height: 1.85rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--fc-brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+#fiscal-calendar-container .fc-day__today {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--fc-brand);
+}
+
+#fiscal-calendar-container .fc-footnote {
+  margin-top: 1rem;
+  font-size: 0.78rem;
+  color: var(--fc-muted-2);
+}
+
+/* ---------- Narrow screens ---------- */
+@media (max-width: 700px) {
+  #fiscal-calendar-container.show {
+    width: 100%;
+    margin: 0 0 1.5rem;
+    border-radius: 0;
+  }
+
+  #fiscal-calendar-container {
+    font-size: 14px;
+  }
+
+  #fiscal-calendar-container .fc-todaycard {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  #fiscal-calendar-container .fc-weeks {
+    grid-template-columns: 3rem repeat(7, minmax(0, 1fr));
+  }
+
+  #fiscal-calendar-container .fc-weeks__dow {
+    padding: 0.5rem 0.15rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+
+  #fiscal-calendar-container .fc-weeks__corner {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.02em;
+  }
+
+  #fiscal-calendar-container .fc-wk {
+    padding: 0.35rem 0.25rem;
+  }
+
+  #fiscal-calendar-container .fc-wk__n {
+    font-size: 0.68rem;
+  }
+
+  #fiscal-calendar-container .fc-wk__d {
+    display: none;
+  }
+
+  #fiscal-calendar-container .fc-day {
+    min-height: 3.1rem;
+    padding: 0.25rem 0.3rem 0.3rem;
+  }
+
+  #fiscal-calendar-container .fc-day__num {
+    font-size: 0.9rem;
+  }
+
+  #fiscal-calendar-container .fc-day__mon {
+    font-size: 0.56rem;
+  }
+
+  #fiscal-calendar-container .fc-day__today {
+    display: none;
+  }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  #fiscal-calendar-container.show {
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  #fiscal-calendar-container .fc-toolbar,
+  #fiscal-calendar-container .fc-detail__nav {
+    display: none !important;
+  }
+
+  #fiscal-calendar-container .fc-masthead {
+    color: #000;
+    background: #fff;
+    border-bottom: 2px solid #000;
+  }
+
+  #fiscal-calendar-container .fc-title,
+  #fiscal-calendar-container .fc-todaycard__date {
+    color: #000;
+  }
+
+  #fiscal-calendar-container .fc-eyebrow,
+  #fiscal-calendar-container .fc-span,
+  #fiscal-calendar-container .fc-todaycard__label,
+  #fiscal-calendar-container .fc-todaycard__period {
+    color: #444;
+  }
+
+  #fiscal-calendar-container .fc-todaycard {
+    border-color: #999;
+    background: #fff;
+  }
+
+  #fiscal-calendar-container .fc-badge53 {
+    color: #000;
+    border-color: #666;
+    background: #fff;
+  }
+
+  #fiscal-calendar-container .fc-month,
+  #fiscal-calendar-container .fc-weeks {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  #fiscal-calendar-container .fc-weeks__corner,
+  #fiscal-calendar-container .fc-weeks__dow {
+    color: #000;
+    background: #e6e6e6;
+  }
+}
+
 
 /* ============================================
    PROJECTS LIST STYLES
