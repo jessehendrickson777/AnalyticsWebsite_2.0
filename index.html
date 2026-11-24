@@ -2,444 +2,426 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-      rel="stylesheet"
-    />
-    <!-- Inter is used by the fiscal calendar panel -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>Operations Analytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
-    <title>Analytics Website</title>
   </head>
   <body>
-    <nav class="navbar">
-      <div class="navbar-inner">
-        <a class="brand" href="/">
-          <img
-            src="croppedBlueTextSmilingGLogoWithoutBackground.png"
-            alt="Site Logo"
-            class="navbar-logo"
-          />
+    <!-- ================= Header ================= -->
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand" href="#home" data-nav="home">
+          <img src="goodwill-logo-blue.png" alt="Goodwill" />
         </a>
-        <div class="navbar-middle">
-          <h1>Operations Analytics Team</h1>
-        </div>
-        <div class="navbar-right">
-          <div class="dropdown contact">
-            <label id="contact" for="contact">Email Team</label>
-            <button type="button" class="dropdown-button">▼</button>
-            <ul class="dropdown-menu">
-              <li>
-                <a
-                  href="mailto:mathew.grossberg@goodwillindy.org?subject=Hello!&body=Hi Matt,"
-                  target="_blank"
-                  >Matt Grossberg</a
-                >
-              </li>
-              <li>
-                <a
-                  href="mailto:andrew.weston@goodwillindy.org?subject=Hello!&body=Hi Andrew,"
-                  target="_blank"
-                  >Andrew Weston</a
-                >
-              </li>
-              <li>
-                <a
-                  href="mailto:jesse.hendrickson@goodwillindy.org?subject=Hello!&body=Hi Jesse,"
-                  target="_blank"
-                  >Jesse Hendrickson</a
-                >
-              </li>
-              <li>
-                <a
-                  href="mailto:mathew.grossberg@goodwillindy.org, andrew.weston@goodwillindy.org, jesse.hendrickson@goodwillindy.org?subject=Hello!&body=Hello Analytics Team,"
-                  target="_blank"
-                  >Entire Team</a
-                >
-              </li>
-            </ul>
+
+        <nav class="pills" aria-label="Sections">
+          <a class="pill-nav" href="#home" data-nav="home"><i class="fa-solid fa-house"></i>Home</a>
+          <a class="pill-nav" href="#funnel" data-nav="funnel"><i class="fa-solid fa-filter"></i>Analytics Funnel</a>
+          <a class="pill-nav" href="#reports" data-nav="reports"><i class="fa-solid fa-chart-column"></i>Reports</a>
+          <a class="pill-nav" href="#notes" data-nav="notes"><i class="fa-solid fa-note-sticky"></i>Notes</a>
+          <a class="pill-nav" href="#fiscal" data-nav="fiscal"><i class="fa-solid fa-calendar-days"></i>Fiscal Calendar</a>
+          <a class="pill-nav" href="#projects" data-nav="projects"><i class="fa-solid fa-list-check"></i>Projects</a>
+        </nav>
+
+        <div class="menu-anchor">
+          <button type="button" class="btn" id="data-toggle" aria-expanded="false" aria-controls="data-menu">
+            <i class="fa-solid fa-database"></i><span>Data</span><i class="fa-solid fa-chevron-down caret"></i>
+          </button>
+          <div class="card dropdown" id="data-menu" hidden>
+            <button type="button" class="dd-item" data-action="export">
+              <span class="link-ico"><i class="fa-solid fa-file-export"></i></span>
+              <span><strong>Export backup</strong><small>Notes + projects as .json</small></span>
+            </button>
+            <button type="button" class="dd-item" data-action="import">
+              <span class="link-ico"><i class="fa-solid fa-file-import"></i></span>
+              <span><strong>Import backup</strong><small>Merge or replace from a file</small></span>
+            </button>
           </div>
-          <!-- <a class="home-button" href="#index.html">Home</a> -->
         </div>
       </div>
+    </header>
+
+    <main class="wrap main">
+      <!-- ================= Home ================= -->
+      <section class="view" data-view="home" id="view-home">
+        <div class="hero" id="hero"></div>
+
+        <div class="home-grid">
+          <section class="card" id="quick-links">
+            <header class="card-head">
+              <h2><i class="fa-solid fa-grip"></i> Quick links</h2>
+              <label class="search home-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search" id="link-search" placeholder="Search links" aria-label="Search links" />
+              </label>
+            </header>
+            <div class="chip-row home-chips">
+              <button type="button" class="chip is-active" data-link-filter="all">All</button>
+              <button type="button" class="chip" data-link-filter="bi">Analytics &amp; BI</button>
+              <button type="button" class="chip" data-link-filter="ops">Operations</button>
+              <button type="button" class="chip" data-link-filter="company">Company</button>
+              <button type="button" class="chip" data-link-filter="drive">Drive &amp; Sheets</button>
+            </div>
+
+            <!-- To add a link: copy any <a class="link-tile"> into the right group
+                 and change the href, icon, name and the small line under the name. -->
+            <div class="card-body">
+              <section class="link-group" data-group="bi">
+                <h3 class="link-group-title">Analytics &amp; BI</h3>
+                <div class="tile-grid">
+                  <a class="link-tile" href="https://goodwillindy.domo.com/" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-chart-pie"></i></span>
+                    <span class="tile-text"><strong>DOMO</strong><span>goodwillindy.domo.com</span></span>
+                  </a>
+                  <a class="link-tile" href="https://app.powerbi.com/home?experience=power-bi" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-chart-column"></i></span>
+                    <span class="tile-text"><strong>Power BI</strong><span>app.powerbi.com</span></span>
+                  </a>
+                  <a class="link-tile" href="https://app.fabric.microsoft.com/groups/a018d2d5-25bd-4d1e-bad0-59ec43dd4d08/list?experience=fabric-developer&amp;selectedWorkspaceObjectId=me" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-layer-group"></i></span>
+                    <span class="tile-text"><strong>Fabric</strong><span>app.fabric.microsoft.com</span></span>
+                  </a>
+                  <a class="link-tile" href="http://www.google.com/url?q=http%3A%2F%2Fsrcorpssrs%2Freports%2Fbrowse%2FReports%2FRetail%2FData%2520Validated&amp;sa=D&amp;sntz=1&amp;usg=AOvVaw3YI8SBIzNk5mIphIZqrTnq" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-server"></i></span>
+                    <span class="tile-text"><strong>SSRS</strong><span>srcorpssrs · Data Validated</span></span>
+                  </a>
+                  <a class="link-tile" href="https://analytics.placer.ai/insights/venues/675697230d78d16b7ac6bcc4/custom-report?competitor=%5B%5D&amp;filter=%5B%7B%22date%22%3A%7B%22key%22%3A%22last_full_12_months%22%2C%22name%22%3A%22Last+full+12+months%22%2C%22chosenLabel%22%3A%22Last+full+12+months%22%2C%22end%22%3A%222025-04-30%22%2C%22start%22%3A%222024-05-01%22%7D%7D%5D" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-location-dot"></i></span>
+                    <span class="tile-text"><strong>Placer</strong><span>analytics.placer.ai</span></span>
+                  </a>
+                  <a class="link-tile" href="https://login.adaptiveinsights.com/app" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-sack-dollar"></i></span>
+                    <span class="tile-text"><strong>Adaptive</strong><span>adaptiveinsights.com</span></span>
+                  </a>
+                </div>
+              </section>
+
+              <section class="link-group" data-group="ops">
+                <h3 class="link-group-title">Operations</h3>
+                <div class="tile-grid">
+                  <a class="link-tile" href="https://gwproducer.goodwillindy.org/" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-boxes-stacked"></i></span>
+                    <span class="tile-text"><strong>Producer App</strong><span>gwproducer.goodwillindy.org</span></span>
+                  </a>
+                  <a class="link-tile" href="https://gwproducer.goodwillindy.org/admin" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-user-gear"></i></span>
+                    <span class="tile-text"><strong>Producer App Admin</strong><span>gwproducer · /admin</span></span>
+                  </a>
+                  <a class="link-tile" href="https://tellermatetouchcloud.com/stats/Dashboard" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-cash-register"></i></span>
+                    <span class="tile-text"><strong>Tellermate Cloud</strong><span>tellermatetouchcloud.com</span></span>
+                  </a>
+                  <a class="link-tile" href="https://app.limblecmms.com/customDashboard/179192" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-trailer"></i></span>
+                    <span class="tile-text"><strong>Trailer Inventory (Limble)</strong><span>app.limblecmms.com</span></span>
+                  </a>
+                  <a class="link-tile" href="https://app.smartsheet.com/r/template-gallery?category=All+templates" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-table-cells"></i></span>
+                    <span class="tile-text"><strong>Smartsheet</strong><span>app.smartsheet.com</span></span>
+                  </a>
+                </div>
+              </section>
+
+              <section class="link-group" data-group="company">
+                <h3 class="link-group-title">Company</h3>
+                <div class="tile-grid">
+                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/tstestbed/applications" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-laptop-code"></i></span>
+                    <span class="tile-text"><strong>IT Apps</strong><span>Google Sites</span></span>
+                  </a>
+                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/goodwillindyretail/home" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-store"></i></span>
+                    <span class="tile-text"><strong>Retail Site</strong><span>Google Sites</span></span>
+                  </a>
+                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/connect?pli=1" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-people-group"></i></span>
+                    <span class="tile-text"><strong>Goodwill Connect</strong><span>Google Sites</span></span>
+                  </a>
+                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/adhub/home" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-sitemap"></i></span>
+                    <span class="tile-text"><strong>AD Hub</strong><span>Google Sites</span></span>
+                  </a>
+                  <a class="link-tile" href="https://app.slack.com/client/TDH96NK39/CDGD9V2JZ" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-brands fa-slack"></i></span>
+                    <span class="tile-text"><strong>Slack</strong><span>app.slack.com</span></span>
+                  </a>
+                </div>
+              </section>
+
+              <section class="link-group" data-group="drive">
+                <h3 class="link-group-title">Drive &amp; Sheets</h3>
+                <div class="tile-grid">
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1ZR9q2zijgYbtTTfoVS4fVjdmo_RVwVA7" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Analytics Folder</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1CqBIG-OuWs7oE5NrzlvVmBSHS6LeUpie" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Regional Trackers</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1LYenTCor1q1VYKLFfNR0GwEe56SLuC9W" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Wage Trackers</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1qAHZfHaga6FkCjgcvrAJSqrftp0Dp6Ye" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>O/S Regional Logs</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1-PAdYc42LFMUfVPjPpq_NVh2HDVPMob6" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Safe Logs</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1sOQ2vv85IByiMMmNy-hvqDYAgqHwiSsh" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Production Quotas</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://drive.google.com/drive/folders/1YGc0q7Fiw6DMuybwClVnavQgd0vKLV5z" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
+                    <span class="tile-text"><strong>Retail Spreadsheets</strong><span>Google Drive</span></span>
+                  </a>
+                  <a class="link-tile" href="https://docs.google.com/spreadsheets/d/1DqFcNPDY3E71qIdt8MggR-Ib2rrGFTXJZ9bn72ANKy4/edit?gid=771848990#gid=771848990" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-table"></i></span>
+                    <span class="tile-text"><strong>Inventory Count Form</strong><span>Google Sheets</span></span>
+                  </a>
+                  <a class="link-tile" href="https://docs.google.com/spreadsheets/d/1Uj7N_tzM2miR5VoCfZAUxgEPULsOQ7oRhBRT1UJH4_I/edit?gid=232272976#gid=232272976" target="_blank" rel="noopener">
+                    <span class="link-ico"><i class="fa-solid fa-table"></i></span>
+                    <span class="tile-text"><strong>Retail Salaries &amp; Wages</strong><span>Google Sheets</span></span>
+                  </a>
+                </div>
+              </section>
+
+              <p class="links-empty" id="links-empty" hidden>No links match that search.</p>
+            </div>
+          </section>
+
+          <aside class="stack">
+            <section class="card">
+              <header class="card-head"><h2>Quick actions</h2></header>
+              <div class="qa-grid">
+                <a class="qa" href="#notes" data-focus="note-title"><span class="link-ico"><i class="fa-solid fa-pen-to-square"></i></span>New note</a>
+                <a class="qa" href="#projects" data-focus="project-name"><span class="link-ico"><i class="fa-solid fa-plus"></i></span>Add project</a>
+                <button type="button" class="qa" data-action="export"><span class="link-ico"><i class="fa-solid fa-file-export"></i></span>Export backup</button>
+                <button type="button" class="qa" data-action="import"><span class="link-ico"><i class="fa-solid fa-file-import"></i></span>Import backup</button>
+              </div>
+            </section>
+            <section class="card">
+              <header class="card-head">
+                <h2>Active projects <span class="count" id="home-projects-count">0</span></h2>
+                <a class="link-more" href="#projects">View all</a>
+              </header>
+              <div class="mini-list" id="home-projects"></div>
+            </section>
+            <section class="card">
+              <header class="card-head">
+                <h2>Recent notes</h2>
+                <a class="link-more" href="#notes">View all</a>
+              </header>
+              <div class="mini-list" id="home-notes"></div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ================= Analytics Funnel ================= -->
+      <section class="view" data-view="funnel" id="view-funnel" hidden>
+        <section class="card embed">
+          <header class="embed-head">
+            <div class="embed-title">
+              <span class="icon-badge"><i class="fa-solid fa-filter"></i></span>
+              <div><h2>Analytics Funnel</h2><p>Google Apps Script web app</p></div>
+            </div>
+            <div class="embed-actions">
+              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
+              <a class="btn btn-sm" href="https://script.google.com/a/macros/goodwillindy.org/s/AKfycby0f7r1pawRBOu1LELTf6ihSFZ_oyVeqosMDDC5dq4QU6SsE_QQIs274TXxNfxSMIc/exec" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+            </div>
+          </header>
+          <div class="embed-body">
+            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading Analytics Funnel…</div>
+            <iframe
+              id="analytics-funnel"
+              name="content-frame"
+              title="Analytics Funnel"
+              data-src="https://script.google.com/a/macros/goodwillindy.org/s/AKfycby0f7r1pawRBOu1LELTf6ihSFZ_oyVeqosMDDC5dq4QU6SsE_QQIs274TXxNfxSMIc/exec"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </section>
+      </section>
+
+      <!-- ================= Reports ================= -->
+      <section class="view" data-view="reports" id="view-reports" hidden>
+        <section class="card embed">
+          <header class="embed-head">
+            <div class="embed-title">
+              <span class="icon-badge"><i class="fa-solid fa-chart-column"></i></span>
+              <div><h2>Retail Reports</h2><p>Domo dashboard page</p></div>
+            </div>
+            <div class="embed-actions">
+              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
+              <a class="btn btn-sm" href="https://embed.domo.com/embed/pages/MZB0Q" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+            </div>
+          </header>
+          <div class="embed-body is-tall">
+            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading Retail Reports…</div>
+            <iframe id="retail-reports" title="Retail Reports" data-src="https://embed.domo.com/embed/pages/MZB0Q"></iframe>
+          </div>
+        </section>
+
+        <section class="card embed">
+          <header class="embed-head">
+            <div class="embed-title">
+              <span class="icon-badge"><i class="fa-solid fa-chart-simple"></i></span>
+              <div><h2>Bar Chart</h2><p>Domo card</p></div>
+            </div>
+            <div class="embed-actions">
+              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
+              <a class="btn btn-sm" href="https://embed.domo.com/cards/LZBNg" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+            </div>
+          </header>
+          <div class="embed-body">
+            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading chart…</div>
+            <iframe id="bar-chart" title="Bar Chart" data-src="https://embed.domo.com/cards/LZBNg"></iframe>
+          </div>
+        </section>
+      </section>
+
+      <!-- ================= Notes ================= -->
+      <section class="view" data-view="notes" id="view-notes" hidden>
+        <div class="page-head">
+          <div><h1>Notes</h1><p>Saved in this browser. Use Data → Export backup to keep a copy.</p></div>
+        </div>
+        <div class="split">
+          <details class="card composer" open>
+            <summary class="card-head">
+              <h2><i class="fa-solid fa-pen-to-square"></i> New note</h2>
+              <i class="fa-solid fa-chevron-down chev"></i>
+            </summary>
+            <form id="note-form">
+              <div class="card-body stack">
+                <div class="field-row">
+                  <label class="field"><span>Title</span><input class="input" type="text" id="note-title" placeholder="e.g. Weekly ops sync" required /></label>
+                  <label class="field"><span>Date</span><input class="input" type="date" id="note-date" required /></label>
+                </div>
+                <div class="field">
+                  <span>Content</span>
+                  <div class="editor">
+                    <div class="editor-bar">
+                      <button type="button" class="btn btn-sm btn-ghost" id="note-bullet-btn"><i class="fa-solid fa-list-ul"></i> Bullet</button>
+                      <span class="editor-hint"><kbd>Tab</kbd> on a bullet adds a sub-bullet</span>
+                    </div>
+                    <textarea class="editor-text" id="note-content" rows="8" placeholder="Type your note… Use Bullet or start a line with • to make a list" required></textarea>
+                  </div>
+                </div>
+              </div>
+              <div class="card-foot">
+                <button type="button" class="btn btn-ghost" id="note-clear-btn">Clear</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save note</button>
+              </div>
+            </form>
+          </details>
+
+          <section>
+            <div class="list-toolbar">
+              <h2>All notes <span class="count" id="notes-count">0</span></h2>
+              <div class="list-tools">
+                <label class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="note-search" placeholder="Search notes" aria-label="Search notes" /></label>
+                <button type="button" class="btn btn-icon" id="notes-refresh-btn" title="Refresh notes" aria-label="Refresh notes"><i class="fa-solid fa-rotate-right"></i></button>
+              </div>
+            </div>
+            <div class="stack" id="notes-list"></div>
+            <p class="links-empty" id="notes-no-match" hidden>No notes match that search.</p>
+          </section>
+        </div>
+      </section>
+
+      <!-- ================= Fiscal Calendar ================= -->
+      <section class="view" data-view="fiscal" id="view-fiscal" hidden>
+        <div id="fiscal-calendar-container"></div>
+      </section>
+
+      <!-- ================= Projects ================= -->
+      <section class="view" data-view="projects" id="view-projects" hidden>
+        <div class="page-head">
+          <div><h1>Projects</h1><p id="projects-summary"></p></div>
+        </div>
+        <div class="split">
+          <details class="card composer" open>
+            <summary class="card-head">
+              <h2><i class="fa-solid fa-plus"></i> New project</h2>
+              <i class="fa-solid fa-chevron-down chev"></i>
+            </summary>
+            <form id="project-form">
+              <div class="card-body stack">
+                <label class="field"><span>Project name</span><input class="input" type="text" id="project-name" placeholder="e.g. Q3 quota review" required /></label>
+                <div class="field-row even">
+                  <label class="field"><span>Start date</span><input class="input" type="date" id="project-start-date" required /></label>
+                  <label class="field"><span>Due date <em>optional</em></span><input class="input" type="date" id="project-due-date" /></label>
+                </div>
+                <label class="field"><span>Description <em>optional</em></span><textarea class="textarea" id="project-description" rows="3" placeholder="What does done look like?"></textarea></label>
+              </div>
+              <div class="card-foot">
+                <button type="button" class="btn btn-ghost" id="clear-project-form">Clear</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add project</button>
+              </div>
+            </form>
+          </details>
+
+          <div class="stack-lg">
+            <section>
+              <div class="list-toolbar"><h2>Active <span class="count" id="active-count">0</span></h2></div>
+              <div class="project-grid" id="active-projects-list"></div>
+            </section>
+            <section>
+              <div class="list-toolbar"><h2>Completed <span class="count" id="completed-count">0</span></h2></div>
+              <div id="completed-projects-list"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= Phone navigation ================= -->
+    <nav class="bottom-nav mobile-only" aria-label="Sections">
+      <a class="bn-item" href="#home" data-nav="home"><i class="fa-solid fa-house"></i>Home</a>
+      <a class="bn-item" href="#notes" data-nav="notes"><i class="fa-solid fa-note-sticky"></i>Notes</a>
+      <a class="bn-item" href="#projects" data-nav="projects"><i class="fa-solid fa-list-check"></i>Projects</a>
+      <a class="bn-item" href="#fiscal" data-nav="fiscal"><i class="fa-solid fa-calendar-days"></i>Fiscal</a>
+      <button type="button" class="bn-item" id="more-btn"><i class="fa-solid fa-ellipsis"></i>More</button>
     </nav>
-    <nav class="navigation-buttons">
-      <div class="sites">
-        <a
-          href="https://sites.google.com/goodwillindy.org/tstestbed/applications"
-          target="_blank"
-        >
-          IT APPS
-        </a>
-        <a href="https://goodwillindy.domo.com/" target="_blank"> DOMO </a>
-        <a
-          href="https://sites.google.com/goodwillindy.org/goodwillindyretail/home"
-          target="_blank"
-        >
-          Retail Site
-        </a>
-        <a
-          href="https://sites.google.com/goodwillindy.org/connect?pli=1"
-          target="_blank"
-        >
-          Goodwill Connect
-        </a>
 
-        <a
-          href="http://www.google.com/url?q=http%3A%2F%2Fsrcorpssrs%2Freports%2Fbrowse%2FReports%2FRetail%2FData%2520Validated&sa=D&sntz=1&usg=AOvVaw3YI8SBIzNk5mIphIZqrTnq"
-          target="_blank"
-        >
-          SSRS
-        </a>
-
-        <a
-          href="https://analytics.placer.ai/insights/venues/675697230d78d16b7ac6bcc4/custom-report?competitor=%5B%5D&filter=%5B%7B%22date%22%3A%7B%22key%22%3A%22last_full_12_months%22%2C%22name%22%3A%22Last+full+12+months%22%2C%22chosenLabel%22%3A%22Last+full+12+months%22%2C%22end%22%3A%222025-04-30%22%2C%22start%22%3A%222024-05-01%22%7D%7D%5D"
-          target="_blank"
-        >
-          Placer
-        </a>
-
-        <a
-          href="https://app.slack.com/client/TDH96NK39/CDGD9V2JZ"
-          target="_blank"
-        >
-          Slack
-        </a>
-
-        <a href="https://login.adaptiveinsights.com/app" target="_blank">
-          Adaptive
-        </a>
-        <a
-          href="https://app.limblecmms.com/customDashboard/179192"
-          target="_blank"
-        >
-          Trailer Inventory Limble
-        </a>
-        <a
-          href="https://tellermatetouchcloud.com/stats/Dashboard"
-          target="_blank"
-        >
-          Tellermate Cloud
-        </a>
-        <a href="https://gwproducer.goodwillindy.org/" target="_blank">
-          Producer App
-        </a>
-        <a href="https://gwproducer.goodwillindy.org/admin" target="_blank">
-          Producer App Admin
-        </a>
-        <a
-          href="https://app.powerbi.com/home?experience=power-bi"
-          target="_blank"
-        >
-          Power BI
-        </a>
-        <a
-          href="https://app.fabric.microsoft.com/groups/a018d2d5-25bd-4d1e-bad0-59ec43dd4d08/list?experience=fabric-developer&selectedWorkspaceObjectId=me"
-          target="_blank"
-        >
-          Fabric
-        </a>
-        <a
-          href="https://app.smartsheet.com/r/template-gallery?category=All+templates"
-          target="_blank"
-        >
-          Smartsheet
-        </a>
-        <a
-          href="https://sites.google.com/goodwillindy.org/adhub/home"
-          target="_blank"
-        >
-          AD Hub
-        </a>
-      </div>
-      <div class="folders">
-        <a
-          href="https://drive.google.com/drive/folders/1ZR9q2zijgYbtTTfoVS4fVjdmo_RVwVA7"
-          target="_blank"
-        >
-          Analytics Folder
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1CqBIG-OuWs7oE5NrzlvVmBSHS6LeUpie"
-          target="_blank"
-        >
-          Regional Trackers
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1LYenTCor1q1VYKLFfNR0GwEe56SLuC9W"
-          target="_blank"
-        >
-          Wage Trackers
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1qAHZfHaga6FkCjgcvrAJSqrftp0Dp6Ye"
-          target="_blank"
-        >
-          O/S Regional Logs
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1-PAdYc42LFMUfVPjPpq_NVh2HDVPMob6"
-          target="_blank"
-        >
-          Safe Logs
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1sOQ2vv85IByiMMmNy-hvqDYAgqHwiSsh"
-          target="_blank"
-        >
-          Production Quotas
-        </a>
-        <a
-          href="https://drive.google.com/drive/folders/1YGc0q7Fiw6DMuybwClVnavQgd0vKLV5z"
-          target="_blank"
-        >
-          Retail spreadsheets
-        </a>
-        <a
-          href="https://docs.google.com/spreadsheets/d/1DqFcNPDY3E71qIdt8MggR-Ib2rrGFTXJZ9bn72ANKy4/edit?gid=771848990#gid=771848990"
-          target="_blank"
-        >
-          Inventory Count Form
-        </a>
-        <a
-          href="https://docs.google.com/spreadsheets/d/1Uj7N_tzM2miR5VoCfZAUxgEPULsOQ7oRhBRT1UJH4_I/edit?gid=232272976#gid=232272976"
-          target="_blank"
-        >
-          Retail Salaries & Wages
-        </a>
-      </div>
-    </nav>
-    <div class="banner-image"></div>
-    <nav class="tabs">
-      <div class="tab-btns">
-        <button class="tab-button" data-tab="tab1">
-          <i class="fa-solid fa-filter"></i> Analytics Funnel
-        </button>
-        <button class="tab-button" data-tab="tab2">
-          <i class="fas fa-file-alt"></i> Reports
-        </button>
-        <button class="tab-button" data-tab="tab3">
-          <i class="fa-solid fa-note-sticky"></i> Notes
-        </button>
-        <button class="tab-button" data-tab="tab4">
-          <i class="fa-solid fa-calendar"></i> Fiscal Calendar
-        </button>
-        <button class="tab-button" data-tab="tab5">
-          <i class="fa-solid fa-list-check"></i> Projects List
-        </button>
-      </div>
-    </nav>
-    <!-- Notes Tab Container -->
-    <div class="notes-container">
-      <div class="notes-header">
-        <h2><i class="fa-solid fa-note-sticky"></i> Notes Management</h2>
-      </div>
-
-      <!-- Create New Note Form -->
-      <div class="note-form-container">
-        <h3>Create New Note</h3>
-        <form id="note-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="note-title"
-                >Note Title <span class="required">*</span></label
-              >
-              <input
-                type="text"
-                id="note-title"
-                required
-                placeholder="Enter note title"
-              />
-            </div>
-            <div class="form-group">
-              <label for="note-date"
-                >Note Date <span class="required">*</span></label
-              >
-              <input type="date" id="note-date" required />
-            </div>
+    <div id="more-sheet" hidden>
+      <div class="sheet-backdrop" data-close-more></div>
+      <div class="sheet" role="dialog" aria-label="More">
+        <div class="sheet-grip"></div>
+        <div class="sheet-head">
+          <h2>More</h2>
+          <button type="button" class="btn btn-icon btn-ghost" data-close-more aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="sheet-section">
+          <div class="sheet-label">Dashboards</div>
+          <div class="more-grid">
+            <a class="more-item" href="#funnel" data-nav="funnel"><span class="link-ico"><i class="fa-solid fa-filter"></i></span>Analytics Funnel</a>
+            <a class="more-item" href="#reports" data-nav="reports"><span class="link-ico"><i class="fa-solid fa-chart-column"></i></span>Reports</a>
           </div>
-
-          <div class="form-group">
-            <label for="note"
-              >Note Content <span class="required">*</span></label
-            >
-            <div class="note-editor-help">
-              <span
-                ><i class="fas fa-info-circle"></i> Press Tab on a bullet to
-                create a sub-bullet</span
-              >
-            </div>
-            <textarea
-              id="note"
-              rows="10"
-              placeholder="Type your note here... Click '• Bullet' button or use Enter key to create bullets"
-              required
-            ></textarea>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" id="bullets-btn" class="btn-bullet">
-              <i class="fas fa-circle"></i> Add Bullet
-            </button>
-            <button type="submit" id="save-btn" class="btn-save-note">
-              <i class="fas fa-save"></i> Save Note
-            </button>
-            <button type="button" id="clear-btn" class="btn-clear-note">
-              <i class="fas fa-times"></i> Clear
-            </button>
-            <button type="button" id="load-btn" class="btn-load-notes">
-              <i class="fas fa-sync"></i> Refresh Notes
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Notes List -->
-      <div class="notes-lists-wrapper">
-        <div class="notes-section">
-          <h3 class="section-title">
-            <i class="fas fa-sticky-note"></i> All Notes
-          </h3>
-          <div class="notes-list">
-            <p class="no-notes">No notes available.</p>
+        </div>
+        <div class="sheet-section">
+          <div class="sheet-label">Data backup</div>
+          <div class="sheet-buttons">
+            <button type="button" class="btn" data-action="import"><i class="fa-solid fa-file-import"></i> Import</button>
+            <button type="button" class="btn" data-action="export"><i class="fa-solid fa-file-export"></i> Export</button>
           </div>
         </div>
       </div>
     </div>
-    <div class="frame">
-      <iframe
-        id="analytics-funnel"
-        name="content-frame"
-        src="https://script.google.com/a/macros/goodwillindy.org/s/AKfycby0f7r1pawRBOu1LELTf6ihSFZ_oyVeqosMDDC5dq4QU6SsE_QQIs274TXxNfxSMIc/exec"
-        allowfullscreen
-      ></iframe>
-    </div>
-    <div class="frame">
-      <div class="frame">
-        <iframe
-          id="retail-reports"
-          src="https://embed.domo.com/embed/pages/MZB0Q"
-          width="1248"
-          height="1620"
-          marginheight="0"
-          marginwidth="0"
-          frameborder="0"
-        ></iframe>
-      </div>
-      <iframe
-        id="bar-chart"
-        src="https://embed.domo.com/cards/LZBNg"
-        width="600"
-        height="600"
-        marginheight="0"
-        marginwidth="0"
-        frameborder="0"
-      ></iframe>
-    </div>
-    <div class="frame">
-      <iframe
-        id="google-calendar"
-        src="https://calendar.google.com/calendar/embed?height=600&wkst=1&ctz=America%2FNew_York&showPrint=0&src=amVzc2UuaGVuZHJpY2tzb25AZ29vZHdpbGxpbmR5Lm9yZw&src=ZW4udXNhI2hvbGlkYXlAZ3JvdXAudi5jYWxlbmRhci5nb29nbGUuY29t&src=YW5kcmV3Lndlc3RvbkBnb29kd2lsbGluZHkub3Jn&src=bWF0aGV3Lmdyb3NzYmVyZ0Bnb29kd2lsbGluZHkub3Jn&color=%23039BE5&color=%230B8043&color=%238E24AA&color=%233F51B5"
-        style="border: solid 1px #777"
-        width="800"
-        height="600"
-        frameborder="0"
-        scrolling="no"
-      ></iframe>
-    </div>
-    <div id="fiscal-calendar-container" class="calendar"></div>
-    <div id="month-calendar-container"></div>
-    <!-- Projects List Container -->
-    <div id="projects-list-container" class="projects-list-container">
-      <div class="projects-header">
-        <h2>Projects Management</h2>
-      </div>
 
-      <!-- Add New Project Form -->
-      <div class="project-form-container">
-        <h3>Add New Project</h3>
-        <form id="project-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="project-name"
-                >Project Name <span class="required">*</span></label
-              >
-              <input
-                type="text"
-                id="project-name"
-                required
-                placeholder="Enter project name"
-              />
-            </div>
-            <div class="form-group">
-              <label for="project-start-date"
-                >Start Date <span class="required">*</span></label
-              >
-              <input type="date" id="project-start-date" required />
-            </div>
-          </div>
+    <input type="file" id="import-file" accept=".json,application/json" hidden />
+    <div class="toasts" id="toasts" aria-live="polite"></div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="project-description">Description (Optional)</label>
-              <textarea
-                id="project-description"
-                rows="3"
-                placeholder="Enter project description"
-              ></textarea>
-            </div>
-            <div class="form-group">
-              <label for="project-due-date">Due Date (Optional)</label>
-              <input type="date" id="project-due-date" />
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn-add-project">
-              <i class="fas fa-plus"></i> Add Project
-            </button>
-            <button
-              type="button"
-              id="clear-project-form"
-              class="btn-clear-project"
-            >
-              <i class="fas fa-times"></i> Clear
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Projects Lists -->
-      <div class="projects-lists-wrapper">
-        <!-- Active Projects -->
-        <div class="projects-section">
-          <h3 class="section-title">
-            <i class="fas fa-tasks"></i> Active Projects
-            <span class="project-count" id="active-count">0</span>
-          </h3>
-          <div id="active-projects-list" class="projects-list">
-            <p class="no-projects">No active projects</p>
-          </div>
-        </div>
-
-        <!-- Completed Projects -->
-        <div class="projects-section">
-          <h3 class="section-title completed">
-            <i class="fas fa-check-circle"></i> Completed Projects
-            <span class="project-count" id="completed-count">0</span>
-          </h3>
-          <div id="completed-projects-list" class="projects-list">
-            <p class="no-projects">No completed projects</p>
-          </div>
-        </div>
-      </div>
-    </div>
     <script src="app.js"></script>
   </body>
 </html>

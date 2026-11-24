@@ -1,25 +1,502 @@
-const contact = document.querySelector(".contact");
-const contactButton = contact.querySelector("button");
-const dropDownMenu = document.querySelector(".dropdown-menu");
-const takeNotesBtn = document.querySelector("#take-notes-button");
-const noteTitle = document.querySelector("#note-title");
-const noteContent = document.querySelector("#note");
-const showNotesBtn = document.querySelector("#show-btn");
-const loadNotesBtn = document.querySelector("#load-btn");
-const notesListContainer = document.querySelector(".notes-list-container");
-const notesList = document.querySelector(".notes-list");
+/* ==========================================================================
+   Operations Analytics site
 
-const loadNotes = () => {
-  const raw = JSON.parse(localStorage.getItem("notes")) || [];
-  notesList.innerHTML = "";
+   Views: Home, Analytics Funnel, Reports, Notes, Fiscal Calendar, Projects.
+   The URL hash (#notes, #projects, ...) picks the view, so views can be
+   bookmarked and the browser back button works.
 
-  if (!raw || raw.length === 0) {
-    notesList.innerHTML = '<p class="no-notes">No notes available.</p>';
+   Notes and projects are saved in this browser's localStorage under the
+   "notes" and "analytics_projects" keys. Export / Import back them up to a
+   .json file.
+   ========================================================================== */
+
+const NOTES_KEY = "notes";
+const PROJECTS_KEY = "analytics_projects";
+const NOTE_EMAIL_RECIPIENT = "jesse.hendrickson@goodwillindy.org";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const LONG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/* ============================================
+   SHARED HELPERS
+   ============================================ */
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
+}
+
+// "YYYY-MM-DD" is read as a local date. new Date("YYYY-MM-DD") means UTC
+// midnight, which is the evening before in Indiana and made project dates
+// show one day early.
+function parseLocalDate(value) {
+  if (!value) return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  const date = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+// Today as YYYY-MM-DD in local time. toISOString() is UTC, so in the evening
+// it would already be tomorrow.
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatShortDate(value) {
+  const d = parseLocalDate(value);
+  return d ? `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : "";
+}
+
+function formatMonthDay(value) {
+  const d = parseLocalDate(value);
+  return d ? `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}` : "";
+}
+
+// Whole days from today until a date; negative means it has passed
+function daysFromToday(value) {
+  const date = parseLocalDate(value);
+  if (!date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return Math.round((date - today) / DAY_MS);
+}
+
+function readStoredArray(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value : [];
+  } catch (err) {
+    console.warn(`Could not read "${key}" from localStorage`, err);
+    return [];
+  }
+}
+
+/* ---------- Toasts ---------- */
+
+// actions: [{ label, onClick }] adds buttons to the toast
+function showToast(message, { icon = "fa-solid fa-check", actions = [], error = false } = {}) {
+  const wrap = document.getElementById("toasts");
+  const toast = document.createElement("div");
+  toast.className = "toast" + (error ? " is-error" : "");
+  toast.setAttribute("role", error ? "alert" : "status");
+  toast.innerHTML = `<i class="${icon}"></i><span>${escapeHtml(message)}</span>`;
+
+  if (actions.length) {
+    const box = document.createElement("span");
+    box.className = "toast-actions";
+    actions.forEach(({ label, onClick }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        toast.remove();
+        onClick();
+      });
+      box.appendChild(button);
+    });
+    toast.appendChild(box);
+  }
+
+  wrap.appendChild(toast);
+  setTimeout(() => toast.remove(), actions.length ? 9000 : 3500);
+}
+
+function showError(message) {
+  showToast(message, { icon: "fa-solid fa-circle-exclamation", error: true });
+}
+
+/* ---------- Dialogs ---------- */
+
+// dismissible: close on backdrop click and Escape. The note editor turns this
+// off so a stray click can't throw away edits.
+function openModal(innerHtml, { size = "", dismissible = true } = {}) {
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.dataset.dismissible = String(dismissible);
+  modal.innerHTML = `<div class="card modal-card ${size}" role="dialog" aria-modal="true">${innerHtml}</div>`;
+  modal.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-modal]") || (dismissible && e.target === modal)) {
+      closeModal(modal);
+    }
+  });
+  document.body.appendChild(modal);
+  document.body.classList.add("has-overlay");
+  const first = modal.querySelector("input, textarea, select");
+  if (first) first.focus();
+  return modal;
+}
+
+function closeModal(modal) {
+  modal.remove();
+  if (!document.querySelector(".modal") && document.getElementById("more-sheet").hidden) {
+    document.body.classList.remove("has-overlay");
+  }
+}
+
+/* ---------- Bulleted note editing ----------
+   "• " starts a bullet and "  ○ " a sub-bullet. Enter continues the list,
+   Enter on an empty bullet ends it, and Tab turns a bullet into a sub-bullet. */
+
+function insertBullet(textarea) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  textarea.value = textarea.value.substring(0, start) + "• " + textarea.value.substring(end);
+  textarea.selectionStart = textarea.selectionEnd = start + 2;
+  textarea.focus();
+}
+
+function enableBulletEditing(textarea) {
+  textarea.addEventListener("keydown", function (e) {
+    const value = textarea.value;
+    const start = textarea.selectionStart;
+    const lastNewline = value.lastIndexOf("\n", start - 1);
+    const lineStart = lastNewline + 1;
+    const currentLine = value.slice(lineStart, start);
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (currentLine.startsWith("• ") && !currentLine.startsWith("  ○ ")) {
+        const before = value.substring(0, lineStart);
+        const after = value.substring(start);
+        const lineContent = currentLine.slice(2);
+        textarea.value = before + "  ○ " + lineContent + after;
+        textarea.selectionStart = textarea.selectionEnd = lineStart + 4 + lineContent.length;
+      } else {
+        const before = value.substring(0, start);
+        const after = value.substring(start);
+        textarea.value = before + "  " + after;
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      }
+    } else if (e.key === "Enter") {
+      if (currentLine.startsWith("  ○ ") && currentLine.trim() !== "○") {
+        e.preventDefault();
+        const before = value.substring(0, start);
+        const after = value.substring(start);
+        textarea.value = before + "\n  ○ " + after;
+        textarea.selectionStart = textarea.selectionEnd = start + 5;
+      } else if (currentLine.startsWith("• ") && currentLine.trim() !== "•") {
+        e.preventDefault();
+        const before = value.substring(0, start);
+        const after = value.substring(start);
+        textarea.value = before + "\n• " + after;
+        textarea.selectionStart = textarea.selectionEnd = start + 3;
+      } else if (
+        currentLine.trim() === "•" ||
+        currentLine.trim() === "○" ||
+        currentLine.trim() === "  ○"
+      ) {
+        e.preventDefault();
+        const before = value.substring(0, lineStart);
+        const after = value.substring(start);
+        textarea.value = before + "\n" + after;
+        textarea.selectionStart = textarea.selectionEnd = lineStart + 1;
+      }
+    }
+  });
+}
+
+/* ============================================
+   VIEWS (hash routing)
+   ============================================ */
+
+const VIEW_TITLES = {
+  home: "Home",
+  funnel: "Analytics Funnel",
+  reports: "Reports",
+  notes: "Notes",
+  fiscal: "Fiscal Calendar",
+  projects: "Projects",
+};
+// Views reached through the phone "More" sheet rather than a bottom tab
+const MORE_SHEET_VIEWS = ["funnel", "reports"];
+// Set by "New note" / "Add project" shortcuts: an input to focus once its view shows
+let pendingFocusId = null;
+
+function viewFromHash() {
+  const view = location.hash.slice(1);
+  return Object.prototype.hasOwnProperty.call(VIEW_TITLES, view) ? view : "home";
+}
+
+function showView(view) {
+  document.querySelectorAll(".view").forEach((section) => {
+    section.hidden = section.dataset.view !== view;
+  });
+
+  document.querySelectorAll("[data-nav]").forEach((link) => {
+    const active = link.dataset.nav === view;
+    link.classList.toggle("is-active", active);
+    if (active) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  });
+  document.getElementById("more-btn").classList.toggle("is-active", MORE_SHEET_VIEWS.includes(view));
+  keepActiveTabVisible();
+
+  // Dashboards load the first time their view opens, not on every page load
+  const section = document.querySelector(`.view[data-view="${view}"]`);
+  section.querySelectorAll("iframe[data-src]").forEach((frame) => {
+    if (!frame.getAttribute("src")) frame.src = frame.dataset.src;
+  });
+
+  if (view === "home") renderHome();
+  if (view === "notes") loadNotes();
+  if (view === "fiscal") renderFiscalCalendar();
+  if (view === "projects") renderProjects();
+
+  document.title = `${VIEW_TITLES[view]} · Operations Analytics`;
+
+  if (pendingFocusId) {
+    const field = document.getElementById(pendingFocusId);
+    pendingFocusId = null;
+    if (field) {
+      const panel = field.closest("details");
+      if (panel) panel.open = true;
+      field.focus();
+    }
+  }
+}
+
+// On tablets the tab strip scrolls sideways; keep the current tab in view
+function keepActiveTabVisible() {
+  const strip = document.querySelector(".pills");
+  const active = strip && strip.querySelector(".is-active");
+  if (!active || strip.scrollWidth <= strip.clientWidth) return;
+  const a = active.getBoundingClientRect();
+  const s = strip.getBoundingClientRect();
+  strip.scrollLeft += a.left - s.left - (s.width - a.width) / 2;
+}
+
+/* ============================================
+   HEADER MENUS (Data menu, phone "More" sheet)
+   ============================================ */
+
+function setDataMenu(open) {
+  document.getElementById("data-menu").hidden = !open;
+  document.getElementById("data-toggle").setAttribute("aria-expanded", String(open));
+}
+
+function setMoreSheet(open) {
+  document.getElementById("more-sheet").hidden = !open;
+  document.body.classList.toggle("has-overlay", open || Boolean(document.querySelector(".modal")));
+}
+
+function setupMenus() {
+  const dataMenu = document.getElementById("data-menu");
+  document.getElementById("data-toggle").addEventListener("click", () => setDataMenu(dataMenu.hidden));
+  document.getElementById("more-btn").addEventListener("click", () => setMoreSheet(true));
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".menu-anchor")) setDataMenu(false);
+    if (e.target.closest("[data-close-more]")) setMoreSheet(false);
+
+    const shortcut = e.target.closest("[data-focus]");
+    if (shortcut) pendingFocusId = shortcut.dataset.focus;
+
+    // Clicking the tab you're already on re-shows it (e.g. back to the
+    // fiscal year overview), since the hash doesn't change
+    const nav = e.target.closest('a[href^="#"]');
+    if (nav && nav.getAttribute("href") === location.hash) {
+      setMoreSheet(false);
+      showView(viewFromHash());
+    }
+
+    const action = e.target.closest("[data-action]");
+    if (action) {
+      setDataMenu(false);
+      setMoreSheet(false);
+      if (action.dataset.action === "export") exportBackup();
+      if (action.dataset.action === "import") chooseImportFile();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    setDataMenu(false);
+    setMoreSheet(false);
+    const modals = document.querySelectorAll('.modal[data-dismissible="true"]');
+    if (modals.length) closeModal(modals[modals.length - 1]);
+  });
+}
+
+/* ============================================
+   EMBEDDED DASHBOARDS
+   ============================================ */
+
+function setupEmbeds() {
+  document.querySelectorAll(".embed").forEach((card) => {
+    const frame = card.querySelector("iframe");
+    const loading = card.querySelector(".embed-loading");
+    frame.addEventListener("load", () => {
+      if (frame.getAttribute("src")) loading.hidden = true;
+    });
+    const reload = card.querySelector("[data-reload]");
+    reload.addEventListener("click", () => {
+      loading.hidden = false;
+      frame.src = frame.dataset.src;
+    });
+  });
+}
+
+/* ============================================
+   QUICK LINKS (Home)
+   To add a link, copy a tile in index.html into the right group.
+   ============================================ */
+
+function setupQuickLinks() {
+  const panel = document.getElementById("quick-links");
+  const search = document.getElementById("link-search");
+  const total = panel.querySelectorAll(".link-tile").length;
+  let group = "all";
+
+  search.placeholder = `Search ${total} links`;
+  panel.querySelector('[data-link-filter="all"]').textContent = `All ${total}`;
+
+  function applyFilters() {
+    const query = search.value.trim().toLowerCase();
+    let shown = 0;
+    panel.querySelectorAll(".link-group").forEach((section) => {
+      const inGroup = group === "all" || section.dataset.group === group;
+      let visible = 0;
+      section.querySelectorAll(".link-tile").forEach((tile) => {
+        const match = inGroup && (!query || tile.textContent.toLowerCase().includes(query));
+        tile.hidden = !match;
+        if (match) visible++;
+      });
+      section.hidden = visible === 0;
+      shown += visible;
+    });
+    document.getElementById("links-empty").hidden = shown > 0;
+  }
+
+  search.addEventListener("input", applyFilters);
+  panel.addEventListener("click", (e) => {
+    const chip = e.target.closest("[data-link-filter]");
+    if (!chip) return;
+    group = chip.dataset.linkFilter;
+    panel.querySelectorAll("[data-link-filter]").forEach((c) => c.classList.toggle("is-active", c === chip));
+    applyFilters();
+  });
+}
+
+/* ============================================
+   HOME DASHBOARD
+   ============================================ */
+
+function renderHome() {
+  renderFiscalHero();
+  renderHomeProjects();
+  renderHomeNotes();
+}
+
+function greetingForNow() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+// Today's fiscal period, week and days left, from the fiscal calendar logic below
+function renderFiscalHero() {
+  const hero = document.getElementById("hero");
+  const today = toMidnight(new Date());
+  const period = isDateBetween(today);
+  const dateLine = `${WEEKDAYS[today.getDay()]} · ${LONG_MONTHS[today.getMonth()]} ${today.getDate()}, ${today.getFullYear()}`;
+
+  let stats = "";
+  if (period) {
+    const periodStart = parseFiscalDate(period.start);
+    const periodEnd = parseFiscalDate(period.end);
+    const weekOffset = Math.floor(Math.round((today - periodStart) / DAY_MS) / 7);
+    const weekStart = addDays(periodStart, weekOffset * 7);
+    const weekEnd = addDays(weekStart, 6);
+    const daysLeft = Math.round((periodEnd - today) / DAY_MS);
+    const weekRange =
+      weekStart.getMonth() === weekEnd.getMonth()
+        ? `${SHORT_MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${weekEnd.getDate()}`
+        : `${SHORT_MONTHS[weekStart.getMonth()]} ${weekStart.getDate()} – ${SHORT_MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+
+    stats = `
+      <div class="hero-stats">
+        <a class="hero-stat" href="#fiscal"><span>Fiscal period</span><strong>P${period.fiscalPeriod} · ${period.name}</strong><em>FY${period.fiscalYear} · Quarter ${period.quarter}</em></a>
+        <a class="hero-stat" href="#fiscal"><span>Fiscal week</span><strong>Week ${period.startWeek + weekOffset}</strong><em>of ${fiscalYearLengthDays(period.fiscalYear) / 7} · ${weekRange}</em></a>
+        <a class="hero-stat" href="#fiscal"><span>Period ends</span><strong>${SHORT_MONTHS[periodEnd.getMonth()]} ${periodEnd.getDate()}</strong><em>${
+          daysLeft === 0 ? "Last day" : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`
+        }</em></a>
+      </div>`;
+  }
+
+  hero.innerHTML = `
+    <div class="hero-main">
+      <span class="hero-eyebrow">${dateLine}</span>
+      <h1>${greetingForNow()}</h1>
+      <p>Operations Analytics workspace: quick links, notes, projects and the fiscal calendar in one place.</p>
+    </div>
+    ${stats}`;
+}
+
+function renderHomeProjects() {
+  const list = document.getElementById("home-projects");
+  const active = sortActiveProjects(ProjectsManager.getActiveProjects());
+  document.getElementById("home-projects-count").textContent = active.length;
+
+  if (!active.length) {
+    list.innerHTML = '<p class="mini-empty">No active projects. <a href="#projects" data-focus="project-name">Add one</a></p>';
     return;
   }
 
-  // Normalize a variety of legacy shapes into the expected note object
+  const rows = active.slice(0, 5).map(
+    (p) => `
+      <a class="mini-row" href="#projects">
+        <span class="mini-main">
+          <strong>${escapeHtml(p.name)}</strong>
+          <span>Started ${formatMonthDay(p.startDate)}${p.dueDate ? ` · due ${formatMonthDay(p.dueDate)}` : ""}</span>
+        </span>
+        ${duePill(p)}
+      </a>`
+  );
+  if (active.length > 5) rows.push(`<a class="mini-more" href="#projects">+${active.length - 5} more</a>`);
+  list.innerHTML = rows.join("");
+}
+
+function renderHomeNotes() {
+  const list = document.getElementById("home-notes");
+  const notes = sortNotes(getNotes()).slice(0, 3);
+
+  if (!notes.length) {
+    list.innerHTML = '<p class="mini-empty">No notes yet. <a href="#notes" data-focus="note-title">Write one</a></p>';
+    return;
+  }
+
+  list.innerHTML = notes
+    .map((note) => {
+      const firstLine = (note.content.split("\n").find((l) => l.trim()) || "").replace(/^\s*[•○]\s/, "");
+      return `
+      <a class="mini-row" href="#notes">
+        <span class="mini-main"><strong>${escapeHtml(note.title || "Untitled note")}</strong><span>${escapeHtml(firstLine)}</span></span>
+        <span class="mini-date">${formatMonthDay(note.date)}</span>
+      </a>`;
+    })
+    .join("");
+}
+
+/* ============================================
+   NOTES
+   ============================================ */
+
+// Reads saved notes and upgrades older shapes (plain strings, other key
+// names, missing ids) to { id, title, content, date, createdAt }. Anything
+// upgraded is saved back so ids stay stable between visits.
+function getNotes() {
+  const raw = readStoredArray(NOTES_KEY);
   let needSave = false;
+
   const normalized = raw.map((item, idx) => {
     // If item is a primitive (string/number), convert to object
     if (typeof item !== "object" || item === null) {
@@ -35,16 +512,9 @@ const loadNotes = () => {
 
     // Try several possible keys for content/title/date/createdAt
     const content =
-      item.content ??
-      item.note ??
-      item.noteContent ??
-      item.body ??
-      item.text ??
-      item.note_text ??
-      "";
+      item.content ?? item.note ?? item.noteContent ?? item.body ?? item.text ?? item.note_text ?? "";
 
-    let title =
-      item.title ?? item.noteTitle ?? item.note_title ?? item.heading ?? "";
+    let title = item.title ?? item.noteTitle ?? item.note_title ?? item.heading ?? "";
 
     // If there's no explicit title, derive first non-empty line (limited length)
     if (!title && content) {
@@ -52,21 +522,16 @@ const loadNotes = () => {
       if (firstLine) title = firstLine.trim().slice(0, 80);
     }
 
-    const date =
-      item.date ?? item.noteDate ?? item.note_date ?? item.dueDate ?? "";
-
-    const createdAt =
-      item.createdAt ?? item.created_at ?? item.created ?? item.timestamp ?? "";
+    const date = item.date ?? item.noteDate ?? item.note_date ?? item.dueDate ?? "";
+    const createdAt = item.createdAt ?? item.created_at ?? item.created ?? item.timestamp ?? "";
 
     let id = item.id;
     if (id === undefined || id === null) {
-      // create a reasonably unique numeric id
       id = Date.now() + idx;
       needSave = true;
     }
 
     // If createdAt missing, set it so we can reliably sort old, undated notes
-    const finalCreatedAt = createdAt || new Date().toISOString();
     if (!createdAt) needSave = true;
 
     return {
@@ -74,585 +539,287 @@ const loadNotes = () => {
       title: title || "",
       content: content || "",
       date: date || "",
-      createdAt: finalCreatedAt,
+      createdAt: createdAt || new Date().toISOString(),
     };
   });
 
-  // Persist normalized structure if we added ids/createdAt or converted primitives
   if (needSave) {
     try {
-      localStorage.setItem("notes", JSON.stringify(normalized));
+      saveNotes(normalized);
     } catch (e) {
-      // If storage fails for some reason, continue without persisting
       console.warn("Failed to persist normalized notes:", e);
     }
   }
+  return normalized;
+}
 
-  // Sort: dated notes first (by date desc), then undated notes (by createdAt desc, then id desc)
-  normalized
-    .sort((a, b) => {
-      const aHasDate = a.date && a.date.toString().trim() !== "";
-      const bHasDate = b.date && b.date.toString().trim() !== "";
+function saveNotes(notes) {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
 
-      if (aHasDate && bHasDate) {
-        // both have dates -> newest first
-        return new Date(b.date) - new Date(a.date);
-      } else if (aHasDate && !bHasDate) {
-        return -1; // a (dated) comes before b (undated)
-      } else if (!aHasDate && bHasDate) {
-        return 1; // b comes before a
-      } else {
-        // neither have a date -> use createdAt (newest first), then id to make order stable
-        if (a.createdAt && b.createdAt) {
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        }
-        return (b.id || 0) - (a.id || 0);
-      }
-    })
-    .forEach((note) => {
-      const noteCard = document.createElement("div");
-      noteCard.className = "note-card";
-      noteCard.setAttribute("data-id", note.id);
-
-      // Format content preserving original order
-      const lines = (note.content || "").split("\n");
-      let formattedContent = "";
-
-      lines.forEach((line) => {
-        if (line.startsWith("  ○ ") || line.startsWith("  • ")) {
-          formattedContent += `<div class="note-sub-bullet">${line.slice(
-            4
-          )}</div>`;
-        } else if (line.startsWith("• ")) {
-          formattedContent += `<div class="note-bullet">${line.slice(2)}</div>`;
-        } else if (line.trim()) {
-          formattedContent += `<div class="note-text">${line}</div>`;
-        } else {
-          formattedContent += '<div class="note-spacer"></div>';
-        }
-      });
-
-      const noteDate = note.date ? formatNoteDate(note.date) : "No date set";
-
-      noteCard.innerHTML = `
-      <div class="note-card-header">
-        <h4 class="note-title-display">${note.title}</h4>
-        <span class="note-id-badge">#${note.id}</span>
-      </div>
-      <div class="note-date-display">
-        <i class="fas fa-calendar"></i>
-        <span>${noteDate}</span>
-      </div>
-      <div class="note-content-display">${formattedContent}</div>
-      <div class="note-actions">
-        <button class="btn-edit-note" onclick="editNoteById(${note.id})">
-          <i class="fas fa-edit"></i> Edit
-        </button>
-        <button class="btn-email-note" onclick="emailNoteById(${note.id})">
-          <i class="fas fa-paper-plane"></i> Email
-        </button>
-        <button class="btn-delete-note" onclick="deleteNoteById(${note.id})">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-      </div>
-    `;
-      notesList.appendChild(noteCard);
-    });
-};
-
-// Format date for display
-function formatNoteDate(dateString) {
-  if (!dateString) return "Not set";
-  // Parse date as local time to avoid timezone issues
-  const [year, month, day] = dateString.split("-");
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+// Dated notes first (newest first), then undated notes by when they were created
+function sortNotes(notes) {
+  return notes.slice().sort((a, b) => {
+    const aDate = parseLocalDate(a.date);
+    const bDate = parseLocalDate(b.date);
+    if (aDate && bDate) return bDate - aDate;
+    if (aDate) return -1;
+    if (bDate) return 1;
+    if (a.createdAt && b.createdAt) return new Date(b.createdAt) - new Date(a.createdAt);
+    return (b.id || 0) - (a.id || 0);
   });
 }
 
-const deleteNote = (noteId) => {
-  const notes = JSON.parse(localStorage.getItem("notes")) || [];
-  const updatedNotes = notes.filter((note) => note.id !== noteId);
-  localStorage.setItem("notes", JSON.stringify(updatedNotes));
-};
+function formatNoteBody(content) {
+  return (content || "")
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("  ○ ") || line.startsWith("  • ")) {
+        return `<div class="ln-sb">${escapeHtml(line.slice(4))}</div>`;
+      }
+      if (line.startsWith("• ")) return `<div class="ln-b">${escapeHtml(line.slice(2))}</div>`;
+      if (line.trim()) return `<div>${escapeHtml(line)}</div>`;
+      return '<div class="ln-gap"></div>';
+    })
+    .join("");
+}
 
-document.querySelectorAll(".tab-button").forEach((button) => {
-  const notesContainer = document.querySelector(".notes-container");
-  const fiscalCalendar = document.querySelector("#fiscal-calendar-container");
-  const monthCalendar = document.querySelector("#month-calendar-container");
-  const barChart = document.querySelector("#bar-chart");
-  const analyticsFunnel = document.querySelector("#analytics-funnel");
-  const retailReports = document.querySelector("#retail-reports");
-  const googleCalendar = document.querySelector("#google-calendar");
-  const projectsList = document.querySelector("#projects-list-container");
+function renderNoteCard(note) {
+  return `
+    <article class="card note" data-id="${note.id}">
+      <header class="note-head">
+        <h3 class="note-title">${escapeHtml(note.title || "Untitled note")}</h3>
+        <span class="note-date"><i class="fa-regular fa-calendar"></i>${note.date ? formatShortDate(note.date) : "No date set"}</span>
+      </header>
+      <div class="note-body">${formatNoteBody(note.content)}</div>
+      <footer class="note-foot">
+        <button type="button" class="btn btn-sm btn-ghost" data-note-action="edit"><i class="fa-solid fa-pen"></i><span>Edit</span></button>
+        <button type="button" class="btn btn-sm btn-ghost" data-note-action="email"><i class="fa-regular fa-paper-plane"></i><span>Email to me</span></button>
+        <button type="button" class="btn btn-sm btn-ghost btn-danger" data-note-action="delete"><i class="fa-regular fa-trash-can"></i><span>Delete</span></button>
+      </footer>
+    </article>`;
+}
 
-  button.addEventListener("click", function () {
-    const tabID = this.dataset.tab;
-    // Hide all tabs
-    fiscalCalendar.classList.remove("show");
-    monthCalendar.classList.remove("show");
-    notesContainer.classList.remove("show");
-    barChart.classList.remove("show");
-    analyticsFunnel.classList.remove("show");
-    retailReports.classList.remove("show");
-    projectsList.classList.remove("show");
+function loadNotes() {
+  const list = document.getElementById("notes-list");
+  const notes = sortNotes(getNotes());
+  document.getElementById("notes-count").textContent = notes.length;
 
-    // Show selected tab
-    if (tabID === "tab5") {
-      projectsList.classList.add("show");
-      loadProjects(); // Load projects when tab is shown
-    }
-    if (tabID === "tab4") {
-      fiscalCalendar.classList.add("show");
-      renderFiscalCalendar();
-    }
-    if (tabID === "tab3") {
-      notesContainer.classList.add("show");
-      loadNotes();
-    }
-    if (tabID === "tab2") {
-      retailReports.classList.add("show");
-      barChart.classList.add("show");
-    }
-    if (tabID === "tab1") {
-      analyticsFunnel.classList.add("show");
-    }
+  list.innerHTML = notes.length
+    ? notes.map(renderNoteCard).join("")
+    : '<div class="card empty-state"><i class="fa-regular fa-note-sticky"></i><p>No notes yet. Notes you save will show up here.</p></div>';
+  applyNoteSearch();
+}
 
-    const anyTabShown = [
-      notesContainer,
-      barChart,
-      analyticsFunnel,
-      retailReports,
-      fiscalCalendar,
-      monthCalendar,
-      projectsList,
-    ].some((tab) => tab.classList.contains("show"));
-
-    if (anyTabShown) {
-      googleCalendar.classList.add("hide");
-    } else {
-      googleCalendar.classList.remove("hide");
-    }
+function applyNoteSearch() {
+  const query = document.getElementById("note-search").value.trim().toLowerCase();
+  const cards = document.querySelectorAll("#notes-list .note");
+  let shown = 0;
+  cards.forEach((card) => {
+    const match = !query || card.textContent.toLowerCase().includes(query);
+    card.hidden = !match;
+    if (match) shown++;
   });
-});
+  document.getElementById("notes-no-match").hidden = !cards.length || shown > 0;
+}
 
-// takeNotesBtn.addEventListener("click", function () {
-//   const takeNotesButtonText = document.querySelector(".note-pad-btn-text");
-//   document.querySelector(".notes-container").classList.toggle("show");
-//   if (takeNotesButtonText.innerText === `Hide Note Pad`) {
-//     takeNotesButtonText.innerText = "Show Note Pad";
-//   } else {
-//     takeNotesButtonText.innerText = "Hide Note Pad";
-//   }
-// });
+function newNoteId(notes) {
+  let id = Date.now();
+  while (notes.some((n) => n.id === id)) id++;
+  return id;
+}
 
-document.addEventListener("click", function (e) {
-  if (contact.contains(e.target)) {
-    dropDownMenu.classList.toggle("show");
-  }
+function setupNotes() {
+  const form = document.getElementById("note-form");
+  const title = document.getElementById("note-title");
+  const date = document.getElementById("note-date");
+  const content = document.getElementById("note-content");
 
-  if (!contact.contains(e.target) && !contactButton.contains(e.target)) {
-    dropDownMenu.classList.remove("show");
-  }
-});
+  date.value = todayISO();
+  enableBulletEditing(content);
+  document.getElementById("note-bullet-btn").addEventListener("click", () => insertBullet(content));
 
-document.querySelector("#clear-btn").addEventListener("click", function () {
-  noteContent.value = "";
-  noteTitle.value = "";
-  const dateInput = document.querySelector("#note-date");
-  if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
-});
+  document.getElementById("note-clear-btn").addEventListener("click", () => {
+    title.value = "";
+    content.value = "";
+    date.value = todayISO();
+    title.focus();
+  });
 
-document.querySelector("#save-btn").addEventListener("click", function () {
-  const title = noteTitle.value;
-  const content = noteContent.value;
-  const dateInput = document.querySelector("#note-date");
-  const date = dateInput
-    ? dateInput.value
-    : new Date().toISOString().split("T")[0];
+  document.getElementById("notes-refresh-btn").addEventListener("click", () => {
+    loadNotes();
+    showToast("Notes refreshed", { icon: "fa-solid fa-rotate-right" });
+  });
 
-  if (title && content) {
-    const notes = JSON.parse(localStorage.getItem("notes")) || [];
-    const noteIdentifier = Date.now();
-    const id = Number(noteIdentifier.toString().slice(-4));
+  document.getElementById("note-search").addEventListener("input", applyNoteSearch);
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const noteTitle = title.value.trim();
+    const noteContent = content.value;
+    if (!noteTitle || !noteContent.trim()) {
+      showError("Add a title and some content first.");
+      return;
+    }
+
+    const notes = getNotes();
     notes.push({
-      id,
-      title,
-      content,
-      date,
+      id: newNoteId(notes),
+      title: noteTitle,
+      content: noteContent,
+      date: date.value || todayISO(),
       createdAt: new Date().toISOString(),
     });
-    localStorage.setItem("notes", JSON.stringify(notes));
-    noteTitle.value = "";
-    noteContent.value = "";
-    if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+    saveNotes(notes);
+
+    title.value = "";
+    content.value = "";
+    date.value = todayISO();
     loadNotes();
-  } else {
-    alert("Please fill in both title and content fields.");
-  }
-});
+    showToast("Note saved");
+  });
 
-loadNotesBtn.addEventListener("click", function () {
-  loadNotes();
-});
-
-// showNotesBtn.addEventListener("click", function () {
-//   notesListContainer.classList.toggle("show");
-//   if (showNotesBtn.innerText === `Hide Notes List`) {
-//     showNotesBtn.innerText = "Show Notes List";
-//   } else {
-//     showNotesBtn.innerText = "Hide Notes List";
-//     notesList.innerHTML = "";
-//   }
-// });
-
-// New consolidated note action functions
+  document.getElementById("notes-list").addEventListener("click", (e) => {
+    const button = e.target.closest("[data-note-action]");
+    if (!button) return;
+    const id = Number(button.closest("[data-id]").dataset.id);
+    if (button.dataset.noteAction === "edit") editNoteById(id);
+    if (button.dataset.noteAction === "email") emailNoteById(id);
+    if (button.dataset.noteAction === "delete") deleteNoteById(id);
+  });
+}
 
 function deleteNoteById(noteId) {
-  if (
-    confirm("Are you sure you want to delete this note? This cannot be undone.")
-  ) {
-    deleteNote(noteId);
-    loadNotes();
-    alert("Note deleted successfully!");
-  }
+  if (!confirm("Are you sure you want to delete this note? This cannot be undone.")) return;
+  saveNotes(getNotes().filter((note) => note.id !== noteId));
+  loadNotes();
+  showToast("Note deleted", { icon: "fa-regular fa-trash-can" });
 }
 
 function editNoteById(noteId) {
-  const notes = JSON.parse(localStorage.getItem("notes")) || [];
-  const note = notes.find((n) => n.id === noteId);
-
+  const note = getNotes().find((n) => n.id === noteId);
   if (!note) {
-    alert("Note not found.");
+    showError("That note couldn't be found.");
     return;
   }
 
-  // Create modal overlay
-  const modal = document.createElement("div");
-  modal.className = "edit-note-modal";
-  modal.innerHTML = `
-    <div class="edit-modal-content">
-      <div class="edit-modal-header">
-        <h3><i class="fas fa-edit"></i> Edit Note</h3>
-        <button class="close-modal" onclick="closeEditNoteModal()">&times;</button>
+  const modal = openModal(
+    `
+    <form id="edit-note-form">
+      <header class="card-head">
+        <h2><i class="fa-solid fa-pen"></i> Edit note</h2>
+        <button type="button" class="btn btn-icon btn-ghost" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </header>
+      <div class="card-body stack">
+        <div class="field-row">
+          <label class="field"><span>Title</span><input class="input" id="edit-note-title" value="${escapeHtml(note.title)}" required /></label>
+          <label class="field"><span>Date</span><input class="input" type="date" id="edit-note-date" value="${escapeHtml(note.date)}" required /></label>
+        </div>
+        <div class="field">
+          <span>Content</span>
+          <div class="editor">
+            <div class="editor-bar">
+              <button type="button" class="btn btn-sm btn-ghost" id="edit-note-bullet"><i class="fa-solid fa-list-ul"></i> Bullet</button>
+              <span class="editor-hint"><kbd>Tab</kbd> on a bullet adds a sub-bullet</span>
+            </div>
+            <textarea class="editor-text" id="edit-note-content" rows="10" required>${escapeHtml(note.content)}</textarea>
+          </div>
+        </div>
       </div>
-      
-      <form id="edit-note-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="edit-note-title">Note Title <span class="required">*</span></label>
-            <input type="text" id="edit-note-title" value="${
-              note.title
-            }" required />
-          </div>
-          
-          <div class="form-group">
-            <label for="edit-note-date">Note Date <span class="required">*</span></label>
-            <input type="date" id="edit-note-date" value="${
-              note.date || ""
-            }" required />
-          </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="edit-note-content">Note Content <span class="required">*</span></label>
-          <div class="note-editor-help">
-            <span><i class="fas fa-info-circle"></i> Press Tab on a bullet to create a sub-bullet</span>
-          </div>
-          <textarea id="edit-note-content" rows="10" required>${
-            note.content
-          }</textarea>
-          <button type="button" id="edit-bullets-btn" class="btn-bullet" style="margin-top: 0.5rem;">
-            <i class="fas fa-circle"></i> Add Bullet
-          </button>
-        </div>
-        
-        <div class="edit-modal-actions">
-          <button type="submit" class="btn-save-edit">
-            <i class="fas fa-save"></i> Save Changes
-          </button>
-          <button type="button" class="btn-cancel-edit" onclick="closeEditNoteModal()">
-            <i class="fas fa-times"></i> Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  `;
+      <footer class="card-foot">
+        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save changes</button>
+      </footer>
+    </form>`,
+    { dismissible: false }
+  );
 
-  document.body.appendChild(modal);
+  const editContent = modal.querySelector("#edit-note-content");
+  enableBulletEditing(editContent);
+  modal.querySelector("#edit-note-bullet").addEventListener("click", () => insertBullet(editContent));
 
-  // Add bullet button functionality to the edit textarea
-  const editBulletsBtn = document.getElementById("edit-bullets-btn");
-  const editTextarea = document.getElementById("edit-note-content");
-
-  editBulletsBtn.addEventListener("click", function () {
-    const start = editTextarea.selectionStart;
-    const end = editTextarea.selectionEnd;
-    const value = editTextarea.value;
-    // Insert bullet at cursor position
-    editTextarea.value =
-      value.substring(0, start) + "• " + value.substring(end);
-    // Move cursor after bullet
-    editTextarea.selectionStart = editTextarea.selectionEnd = start + 2;
-    editTextarea.focus();
-  });
-
-  // Add bullet functionality to the edit textarea
-  editTextarea.addEventListener("keydown", function (e) {
-    const value = editTextarea.value;
-    const start = editTextarea.selectionStart;
-    const lastNewline = value.lastIndexOf("\n", start - 1);
-    const lineStart = lastNewline + 1;
-    const currentLine = value.slice(lineStart, start);
-
-    if (e.key === "Tab") {
-      e.preventDefault();
-      if (currentLine.startsWith("• ") && !currentLine.startsWith("  ○ ")) {
-        const before = value.substring(0, lineStart);
-        const after = value.substring(start);
-        const lineContent = currentLine.slice(2);
-        editTextarea.value = before + "  ○ " + lineContent + after;
-        editTextarea.selectionStart = editTextarea.selectionEnd =
-          lineStart + 4 + lineContent.length;
-      } else {
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        editTextarea.value = before + "  " + after;
-        editTextarea.selectionStart = editTextarea.selectionEnd = start + 2;
-      }
-    } else if (e.key === "Enter") {
-      if (currentLine.startsWith("  ○ ") && currentLine.trim() !== "○") {
-        e.preventDefault();
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        editTextarea.value = before + "\n  ○ " + after;
-        editTextarea.selectionStart = editTextarea.selectionEnd = start + 5;
-      } else if (currentLine.startsWith("• ") && currentLine.trim() !== "•") {
-        e.preventDefault();
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        editTextarea.value = before + "\n• " + after;
-        editTextarea.selectionStart = editTextarea.selectionEnd = start + 3;
-      } else if (
-        currentLine.trim() === "•" ||
-        currentLine.trim() === "○" ||
-        currentLine.trim() === "  ○"
-      ) {
-        e.preventDefault();
-        const before = value.substring(0, lineStart);
-        const after = value.substring(start);
-        editTextarea.value = before + "\n" + after;
-        editTextarea.selectionStart = editTextarea.selectionEnd = lineStart + 1;
-      }
+  modal.querySelector("#edit-note-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const updated = {
+      title: modal.querySelector("#edit-note-title").value.trim(),
+      content: editContent.value,
+      date: modal.querySelector("#edit-note-date").value,
+    };
+    if (!updated.title || !updated.content.trim() || !updated.date) {
+      showError("Please fill in the title, date and content.");
+      return;
     }
+
+    const notes = getNotes();
+    const index = notes.findIndex((n) => n.id === noteId);
+    if (index !== -1) {
+      notes[index] = { ...notes[index], ...updated };
+      saveNotes(notes);
+    }
+    closeModal(modal);
+    loadNotes();
+    showToast("Note updated");
   });
-
-  // Handle form submission
-  document
-    .getElementById("edit-note-form")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const updatedData = {
-        title: document.getElementById("edit-note-title").value.trim(),
-        content: document.getElementById("edit-note-content").value,
-        date: document.getElementById("edit-note-date").value,
-      };
-
-      if (!updatedData.title || !updatedData.content || !updatedData.date) {
-        alert("Please fill in all required fields");
-        return;
-      }
-
-      // Update the note
-      const notes = JSON.parse(localStorage.getItem("notes")) || [];
-      const noteIndex = notes.findIndex((n) => n.id === noteId);
-      if (noteIndex !== -1) {
-        notes[noteIndex] = {
-          ...notes[noteIndex],
-          ...updatedData,
-        };
-        localStorage.setItem("notes", JSON.stringify(notes));
-      }
-
-      closeEditNoteModal();
-      loadNotes();
-    });
-
-  // Close on overlay click
-  // modal.addEventListener("click", function (e) {
-  //   if (e.target === modal) {
-  //     closeEditNoteModal();
-  //   }
-  // });
-}
-
-// Close edit note modal
-function closeEditNoteModal() {
-  const modal = document.querySelector(".edit-note-modal");
-  if (modal) {
-    modal.remove();
-  }
 }
 
 function emailNoteById(noteId) {
-  const notes = JSON.parse(localStorage.getItem("notes")) || [];
-  const note = notes.find((n) => n.id === noteId);
-
+  const note = getNotes().find((n) => n.id === noteId);
   if (!note) {
-    alert("Note not found.");
+    showError("That note couldn't be found.");
     return;
   }
 
   const subject = `Note: ${note.title}`;
   const body = `${note.title}\n\n${note.content}`;
-  const recipient = "jesse.hendrickson@goodwillindy.org"; // change if needed
-
-  const mailto = `mailto:${encodeURIComponent(
-    recipient
-  )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-  // Try natural anchor click first (more reliable than window.open in some browsers)
-  try {
-    const a = document.createElement("a");
-    a.href = mailto;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // After clicking the mailto, we can't detect success reliably. Provide a fallback UI.
-    setTimeout(() => {
-      // Offer fallback options if user's environment didn't open a mail client
-      showEmailFallback(mailto, subject, body);
-    }, 700);
-  } catch (err) {
-    // If something throws, immediately show fallback
-    showEmailFallback(mailto, subject, body);
-  }
-}
-
-function showEmailFallback(mailto, subject, body) {
-  // Compose a Gmail web compose URL (user must be logged into Gmail)
+  const mailto = `mailto:${encodeURIComponent(NOTE_EMAIL_RECIPIENT)}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
   const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-    "jesse.hendrickson@goodwillindy.org"
+    NOTE_EMAIL_RECIPIENT
   )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-  const message =
-    "It looks like your device doesn't have a configured mail app. You can:\n\n" +
-    "- Click OK to open Gmail compose (requires you to be logged in to Gmail),\n" +
-    "- Or copy the note contents to your clipboard and paste into your email client.\n\n" +
-    "Press OK to open Gmail, or Cancel to copy the content to clipboard.";
+  // A real anchor click opens mail apps more reliably than window.open
+  const link = document.createElement("a");
+  link.href = mailto;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 
-  if (confirm(message)) {
-    window.open(gmailUrl, "_blank");
+  // There's no way to tell whether a mail app opened, so offer the fallbacks
+  // in a toast instead of a blocking dialog
+  showToast("Opening your mail app…", {
+    icon: "fa-regular fa-paper-plane",
+    actions: [
+      { label: "Open in Gmail", onClick: () => window.open(gmailUrl, "_blank", "noopener") },
+      {
+        label: "Copy text",
+        onClick: () => copyText(`To: ${NOTE_EMAIL_RECIPIENT}\nSubject: ${subject}\n\n${body}`),
+      },
+    ],
+  });
+}
+
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => showToast("Copied. Paste it into an email to send.", { icon: "fa-regular fa-copy" }))
+      .catch(() => fallbackCopyPrompt(text));
   } else {
-    // Copy body to clipboard so user can paste into webmail manually
-    const textToCopy = `To: jesse.hendrickson@goodwillindy.org\nSubject: ${subject}\n\n${body}`;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard
-        .writeText(textToCopy)
-        .then(() =>
-          alert("Note copied to clipboard. Paste into your email to send.")
-        )
-        .catch(() => fallbackCopyPrompt(textToCopy));
-    } else {
-      fallbackCopyPrompt(textToCopy);
-    }
+    fallbackCopyPrompt(text);
   }
 }
 
 function fallbackCopyPrompt(text) {
   // Older browsers fallback: show text in a prompt (user can Ctrl+C)
-  prompt(
-    "Copy the message below (Ctrl+C / Cmd+C) and paste into your email:",
-    text
-  );
+  prompt("Copy the message below (Ctrl+C / Cmd+C) and paste into your email:", text);
 }
 
-// function emailNoteById(noteId) {
-//   const notes = JSON.parse(localStorage.getItem("notes")) || [];
-//   const note = notes.find((n) => n.id === noteId);
-
-//   if (!note) {
-//     alert("Note not found.");
-//     return;
-//   }
-
-//   const subject = encodeURIComponent(`Note: ${note.title}`);
-//   const body = encodeURIComponent(`${note.title}\n\n${note.content}`);
-//   const mailtoLink = `mailto:jesse.hendrickson@goodwillindy.org?subject=${subject}&body=${body}`;
-//   window.open(mailtoLink, "_blank");
-// }
-
-document.querySelector("#bullets-btn").addEventListener("click", function () {
-  const textarea = document.querySelector("#note");
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const value = textarea.value;
-  // Insert bullet at cursor position
-  textarea.value = value.substring(0, start) + "• " + value.substring(end);
-  // Move cursor after bullet
-  textarea.selectionStart = textarea.selectionEnd = start + 2;
-  textarea.focus();
-});
-
-noteContent.addEventListener("keydown", function (e) {
-  const value = noteContent.value;
-  const start = noteContent.selectionStart;
-  const lastNewline = value.lastIndexOf("\n", start - 1);
-  const lineStart = lastNewline + 1;
-  const currentLine = value.slice(lineStart, start);
-
-  if (e.key === "Tab") {
-    e.preventDefault();
-
-    // If on a bullet line, convert to sub-bullet with hollow circle
-    if (currentLine.startsWith("• ") && !currentLine.startsWith("  ○ ")) {
-      const before = value.substring(0, lineStart);
-      const after = value.substring(start);
-      const lineContent = currentLine.slice(2); // Remove "• "
-      noteContent.value = before + "  ○ " + lineContent + after;
-      noteContent.selectionStart = noteContent.selectionEnd =
-        lineStart + 4 + lineContent.length;
-    } else {
-      // Regular tab functionality
-      const before = value.substring(0, start);
-      const after = value.substring(start);
-      noteContent.value = before + "  " + after;
-      noteContent.selectionStart = noteContent.selectionEnd = start + 2;
-    }
-  } else if (e.key === "Enter") {
-    if (currentLine.startsWith("  ○ ") && currentLine.trim() !== "○") {
-      // Continue sub-bullets with hollow circle
-      e.preventDefault();
-      const before = value.substring(0, start);
-      const after = value.substring(start);
-      noteContent.value = before + "\n  ○ " + after;
-      noteContent.selectionStart = noteContent.selectionEnd = start + 5;
-    } else if (currentLine.startsWith("• ") && currentLine.trim() !== "•") {
-      // Continue main bullets
-      e.preventDefault();
-      const before = value.substring(0, start);
-      const after = value.substring(start);
-      noteContent.value = before + "\n• " + after;
-      noteContent.selectionStart = noteContent.selectionEnd = start + 3;
-    } else if (
-      currentLine.trim() === "•" ||
-      currentLine.trim() === "○" ||
-      currentLine.trim() === "  ○"
-    ) {
-      // Empty bullet - remove it and create new line
-      e.preventDefault();
-      const before = value.substring(0, lineStart);
-      const after = value.substring(start);
-      noteContent.value = before + "\n" + after;
-      noteContent.selectionStart = noteContent.selectionEnd = lineStart + 1;
-    }
-  }
-});
+/* ============================================
+   FISCAL CALENDAR (4-4-5 with a 53rd week every 6th year)
+   Carried over unchanged from the previous version of this file.
+   ============================================ */
 
 // Anchor date the whole fiscal calendar is derived from (a known fiscal year start)
 const FISCAL_YEAR_ANCHOR = "06/29/2025";
@@ -1290,22 +1457,16 @@ function fcWireEvents(container) {
   });
 }
 
-
-// Initial render
-document.addEventListener("DOMContentLoaded", () => renderFiscalCalendar());
-
 /* ============================================
-   PROJECTS LIST FUNCTIONALITY
+   PROJECTS
    ============================================ */
 
-// Projects state management
 const ProjectsManager = {
-  storageKey: "analytics_projects",
+  storageKey: PROJECTS_KEY,
 
   // Get all projects from localStorage
   getProjects() {
-    const projects = localStorage.getItem(this.storageKey);
-    return projects ? JSON.parse(projects) : [];
+    return readStoredArray(this.storageKey);
   },
 
   // Save projects to localStorage
@@ -1345,386 +1506,210 @@ const ProjectsManager = {
 
   // Delete a project
   deleteProject(projectId) {
-    const projects = this.getProjects();
-    const filteredProjects = projects.filter((p) => p.id !== projectId);
-    this.saveProjects(filteredProjects);
+    this.saveProjects(this.getProjects().filter((p) => p.id !== projectId));
   },
 
   // Update an existing project
   updateProject(projectId, updatedData) {
     const projects = this.getProjects();
-    const projectIndex = projects.findIndex((p) => p.id === projectId);
-    if (projectIndex !== -1) {
-      projects[projectIndex] = {
-        ...projects[projectIndex],
-        ...updatedData,
-      };
-      this.saveProjects(projects);
-      return projects[projectIndex];
-    }
-    return null;
+    const index = projects.findIndex((p) => p.id === projectId);
+    if (index === -1) return null;
+    projects[index] = { ...projects[index], ...updatedData };
+    this.saveProjects(projects);
+    return projects[index];
   },
 
-  // Get active projects
   getActiveProjects() {
     return this.getProjects().filter((p) => p.status === "active");
   },
 
-  // Get completed projects
   getCompletedProjects() {
     return this.getProjects().filter((p) => p.status === "completed");
   },
 };
 
-// Format date for display
-function formatProjectDate(dateString) {
-  if (!dateString) return "Not set";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+// Soonest due date first; projects without a due date go last
+function sortActiveProjects(projects) {
+  return projects.slice().sort((a, b) => {
+    const aDue = parseLocalDate(a.dueDate);
+    const bDue = parseLocalDate(b.dueDate);
+    if (aDue && bDue && aDue - bDue !== 0) return aDue - bDue;
+    if (aDue && !bDue) return -1;
+    if (!aDue && bDue) return 1;
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
   });
 }
 
-// Create a project card element
-function createProjectCard(project) {
-  const card = document.createElement("div");
-  card.className = `project-card ${project.status}`;
-  card.dataset.projectId = project.id;
-
-  const isCompleted = project.status === "completed";
-
-  card.innerHTML = `
-    <div class="project-card-header">
-      <h4 class="project-name">${project.name}</h4>
-      <span class="project-status-badge ${project.status}">
-        ${isCompleted ? "✓ Completed" : "Active"}
-      </span>
-    </div>
-    
-    ${
-      project.description
-        ? `<p class="project-description">${project.description}</p>`
-        : ""
-    }
-    
-    <div class="project-dates">
-      <div class="project-date-item">
-        <i class="fas fa-calendar-plus"></i>
-        <span class="project-date-label">Start:</span>
-        <span>${formatProjectDate(project.startDate)}</span>
-      </div>
-      ${
-        project.dueDate
-          ? `
-        <div class="project-date-item">
-          <i class="fas fa-calendar-check"></i>
-          <span class="project-date-label">Due:</span>
-          <span>${formatProjectDate(project.dueDate)}</span>
-        </div>
-      `
-          : ""
-      }
-    </div>
-    
-    ${
-      isCompleted
-        ? `
-      <div class="completed-date">
-        <i class="fas fa-check-circle"></i>
-        Completed: ${formatProjectDate(project.completedAt)}
-      </div>
-    `
-        : ""
-    }
-    
-    <div class="project-actions">
-      ${
-        !isCompleted
-          ? `
-        <button class="btn-edit-project" onclick="editProject(${project.id})">
-          <i class="fas fa-edit"></i> Edit
-        </button>
-        <button class="btn-complete" onclick="completeProject(${project.id})">
-          <i class="fas fa-check"></i> Mark Complete
-        </button>
-      `
-          : ""
-      }
-      <button class="btn-delete-project" onclick="deleteProject(${project.id})">
-        <i class="fas fa-trash"></i> Delete
-      </button>
-    </div>
-  `;
-
-  return card;
+function duePill(project) {
+  if (!project.dueDate) return '<span class="pill pill-muted">No due date</span>';
+  const days = daysFromToday(project.dueDate);
+  if (days === null) return "";
+  if (days < 0) {
+    return `<span class="pill pill-danger"><i class="fa-solid fa-circle-exclamation"></i>${-days} day${days === -1 ? "" : "s"} overdue</span>`;
+  }
+  if (days === 0) return '<span class="pill pill-warn"><i class="fa-regular fa-clock"></i>Due today</span>';
+  const tone = days <= 7 ? "pill-warn" : "pill-brand";
+  return `<span class="pill ${tone}"><i class="fa-regular fa-clock"></i>Due in ${days} day${days === 1 ? "" : "s"}</span>`;
 }
 
-// Render all projects
+function renderProjectCard(project) {
+  return `
+    <article class="card project" data-id="${project.id}">
+      <header class="project-head">
+        <h3>${escapeHtml(project.name)}</h3>
+        ${duePill(project)}
+      </header>
+      ${project.description ? `<p class="project-desc">${escapeHtml(project.description)}</p>` : ""}
+      <dl class="project-dates">
+        <div><dt>Start</dt><dd>${formatShortDate(project.startDate) || "Not set"}</dd></div>
+        <div><dt>Due</dt><dd>${formatShortDate(project.dueDate) || "—"}</dd></div>
+      </dl>
+      <footer class="project-foot">
+        <button type="button" class="btn btn-sm" data-project-action="complete"><i class="fa-solid fa-check"></i> Mark complete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-sm btn-ghost btn-icon" data-project-action="edit" title="Edit" aria-label="Edit project"><i class="fa-solid fa-pen"></i></button>
+        <button type="button" class="btn btn-sm btn-ghost btn-icon btn-danger" data-project-action="delete" title="Delete" aria-label="Delete project"><i class="fa-regular fa-trash-can"></i></button>
+      </footer>
+    </article>`;
+}
+
+function renderCompletedRow(project) {
+  const started = formatShortDate(project.startDate);
+  return `
+    <div class="done-row" data-id="${project.id}">
+      <span class="done-check"><i class="fa-solid fa-check"></i></span>
+      <div class="done-main">
+        <strong>${escapeHtml(project.name)}</strong>
+        <span>Completed ${formatShortDate(project.completedAt) || "—"}${started ? ` · started ${started}` : ""}</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-ghost btn-icon btn-danger" data-project-action="delete" title="Delete" aria-label="Delete project"><i class="fa-regular fa-trash-can"></i></button>
+    </div>`;
+}
+
 function renderProjects() {
-  const activeList = document.getElementById("active-projects-list");
-  const completedList = document.getElementById("completed-projects-list");
-  const activeCount = document.getElementById("active-count");
-  const completedCount = document.getElementById("completed-count");
+  const active = sortActiveProjects(ProjectsManager.getActiveProjects());
+  const completed = ProjectsManager.getCompletedProjects().sort(
+    (a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0)
+  );
 
-  const activeProjects = ProjectsManager.getActiveProjects();
-  const completedProjects = ProjectsManager.getCompletedProjects();
+  document.getElementById("projects-summary").textContent = `${active.length} active · ${completed.length} completed`;
+  document.getElementById("active-count").textContent = active.length;
+  document.getElementById("completed-count").textContent = completed.length;
 
-  // Update counts
-  activeCount.textContent = activeProjects.length;
-  completedCount.textContent = completedProjects.length;
+  document.getElementById("active-projects-list").innerHTML = active.length
+    ? active.map(renderProjectCard).join("")
+    : '<div class="card empty-state"><i class="fa-solid fa-list-check"></i><p>No active projects</p></div>';
 
-  // Render active projects
-  activeList.innerHTML = "";
-  if (activeProjects.length === 0) {
-    activeList.innerHTML = '<p class="no-projects">No active projects</p>';
-  } else {
-    activeProjects
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .forEach((project) => {
-        activeList.appendChild(createProjectCard(project));
-      });
-  }
-
-  // Render completed projects
-  completedList.innerHTML = "";
-  if (completedProjects.length === 0) {
-    completedList.innerHTML =
-      '<p class="no-projects">No completed projects</p>';
-  } else {
-    completedProjects
-      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
-      .forEach((project) => {
-        completedList.appendChild(createProjectCard(project));
-      });
-  }
+  document.getElementById("completed-projects-list").innerHTML = completed.length
+    ? `<div class="card done-list">${completed.map(renderCompletedRow).join("")}</div>`
+    : '<div class="card empty-state"><i class="fa-regular fa-circle-check"></i><p>No completed projects</p></div>';
 }
 
-// Load projects (called when tab is shown)
+// Kept for anything that still calls the old name
 function loadProjects() {
   renderProjects();
 }
 
-// Complete a project
 function completeProject(projectId) {
-  if (confirm("Mark this project as completed?")) {
-    ProjectsManager.completeProject(projectId);
-    renderProjects();
-  }
+  if (!confirm("Mark this project as completed?")) return;
+  ProjectsManager.completeProject(projectId);
+  renderProjects();
+  showToast("Project marked complete");
 }
 
-// Delete a project
 function deleteProject(projectId) {
-  if (
-    confirm(
-      "Are you sure you want to delete this project? This cannot be undone."
-    )
-  ) {
-    ProjectsManager.deleteProject(projectId);
-    renderProjects();
-  }
+  if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) return;
+  ProjectsManager.deleteProject(projectId);
+  renderProjects();
+  showToast("Project deleted", { icon: "fa-regular fa-trash-can" });
 }
 
-// Edit a project
 function editProject(projectId) {
-  const projects = ProjectsManager.getProjects();
-  const project = projects.find((p) => p.id === projectId);
-
+  const project = ProjectsManager.getProjects().find((p) => p.id === projectId);
   if (!project) return;
 
-  // Create modal overlay
-  const modal = document.createElement("div");
-  modal.className = "edit-project-modal";
-  modal.innerHTML = `
-    <div class="edit-modal-content">
-      <div class="edit-modal-header">
-        <h3><i class="fas fa-edit"></i> Edit Project</h3>
-        <button class="close-modal" onclick="closeEditModal()">&times;</button>
+  const modal = openModal(`
+    <form id="edit-project-form">
+      <header class="card-head">
+        <h2><i class="fa-solid fa-pen"></i> Edit project</h2>
+        <button type="button" class="btn btn-icon btn-ghost" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </header>
+      <div class="card-body stack">
+        <label class="field"><span>Project name</span><input class="input" id="edit-project-name" value="${escapeHtml(project.name)}" required /></label>
+        <div class="field-row even">
+          <label class="field"><span>Start date</span><input class="input" type="date" id="edit-project-start-date" value="${escapeHtml(project.startDate)}" required /></label>
+          <label class="field"><span>Due date <em>optional</em></span><input class="input" type="date" id="edit-project-due-date" value="${escapeHtml(project.dueDate || "")}" /></label>
+        </div>
+        <label class="field"><span>Description <em>optional</em></span><textarea class="textarea" id="edit-project-description" rows="3">${escapeHtml(project.description || "")}</textarea></label>
       </div>
-      
-      <form id="edit-project-form">
-        <div class="form-group">
-          <label for="edit-project-name">Project Name <span class="required">*</span></label>
-          <input type="text" id="edit-project-name" value="${
-            project.name
-          }" required />
-        </div>
-        
-        <div class="form-group">
-          <label for="edit-project-description">Description</label>
-          <textarea id="edit-project-description" rows="3">${
-            project.description || ""
-          }</textarea>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label for="edit-project-start-date">Start Date <span class="required">*</span></label>
-            <input type="date" id="edit-project-start-date" value="${
-              project.startDate
-            }" required />
-          </div>
-          
-          <div class="form-group">
-            <label for="edit-project-due-date">Due Date</label>
-            <input type="date" id="edit-project-due-date" value="${
-              project.dueDate || ""
-            }" />
-          </div>
-        </div>
-        
-        <div class="edit-modal-actions">
-          <button type="submit" class="btn-save-edit">
-            <i class="fas fa-save"></i> Save Changes
-          </button>
-          <button type="button" class="btn-cancel-edit" onclick="closeEditModal()">
-            <i class="fas fa-times"></i> Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  `;
+      <footer class="card-foot">
+        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save changes</button>
+      </footer>
+    </form>`);
 
-  document.body.appendChild(modal);
-
-  // Handle form submission
-  document
-    .getElementById("edit-project-form")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const updatedData = {
-        name: document.getElementById("edit-project-name").value.trim(),
-        description: document
-          .getElementById("edit-project-description")
-          .value.trim(),
-        startDate: document.getElementById("edit-project-start-date").value,
-        dueDate: document.getElementById("edit-project-due-date").value,
-      };
-
-      if (!updatedData.name || !updatedData.startDate) {
-        alert("Please fill in all required fields");
-        return;
-      }
-
-      ProjectsManager.updateProject(projectId, updatedData);
-      closeEditModal();
-      renderProjects();
-      alert("Project updated successfully!");
-    });
-
-  // Close on overlay click
-  modal.addEventListener("click", function (e) {
-    if (e.target === modal) {
-      closeEditModal();
+  modal.querySelector("#edit-project-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const updated = {
+      name: modal.querySelector("#edit-project-name").value.trim(),
+      description: modal.querySelector("#edit-project-description").value.trim(),
+      startDate: modal.querySelector("#edit-project-start-date").value,
+      dueDate: modal.querySelector("#edit-project-due-date").value,
+    };
+    if (!updated.name || !updated.startDate) {
+      showError("Please fill in the project name and start date.");
+      return;
     }
+    ProjectsManager.updateProject(projectId, updated);
+    closeModal(modal);
+    renderProjects();
+    showToast("Project updated");
   });
 }
 
-// Close edit modal
-function closeEditModal() {
-  const modal = document.querySelector(".edit-project-modal");
-  if (modal) {
-    modal.remove();
-  }
-}
+function setupProjects() {
+  const form = document.getElementById("project-form");
+  const startDate = document.getElementById("project-start-date");
+  startDate.value = todayISO();
 
-// Handle project form submission
-document.addEventListener("DOMContentLoaded", function () {
-  const projectForm = document.getElementById("project-form");
-  const clearButton = document.getElementById("clear-project-form");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const projectData = {
+      name: document.getElementById("project-name").value.trim(),
+      description: document.getElementById("project-description").value.trim(),
+      startDate: startDate.value,
+      dueDate: document.getElementById("project-due-date").value,
+    };
+    if (!projectData.name || !projectData.startDate) {
+      showError("Please fill in the project name and start date.");
+      return;
+    }
 
-  if (projectForm) {
-    projectForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const projectData = {
-        name: document.getElementById("project-name").value.trim(),
-        description: document
-          .getElementById("project-description")
-          .value.trim(),
-        startDate: document.getElementById("project-start-date").value,
-        dueDate: document.getElementById("project-due-date").value,
-      };
-
-      if (!projectData.name || !projectData.startDate) {
-        alert(
-          "Please fill in all required fields (Project Name and Start Date)"
-        );
-        return;
-      }
-
-      ProjectsManager.addProject(projectData);
-      projectForm.reset();
-      renderProjects();
-
-      // Show success message
-      alert("Project added successfully!");
-    });
-  }
-
-  if (clearButton) {
-    clearButton.addEventListener("click", function () {
-      projectForm.reset();
-    });
-  }
-
-  // Set today's date as default for start date
-  const startDateInput = document.getElementById("project-start-date");
-  if (startDateInput) {
-    const today = new Date().toISOString().split("T")[0];
-    startDateInput.value = today;
-  }
-
-  // Initialize note date field
-  const noteDateInput = document.getElementById("note-date");
-  if (noteDateInput) {
-    const today = new Date().toISOString().split("T")[0];
-    noteDateInput.value = today;
-  }
-
-  // Handle note form submission
-  const noteForm = document.getElementById("note-form");
-  if (noteForm) {
-    noteForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      document.getElementById("save-btn").click();
-    });
-  }
-
-  // Load notes on tab switch
-  const notesTab = document.querySelector('[data-tab="tab3"]');
-  if (notesTab) {
-    notesTab.addEventListener("click", function () {
-      loadNotes();
-    });
-  }
-});
-
-// Sync page padding with fixed navbar height so content does not sit behind it.
-(function () {
-  function syncNavbarSpacing() {
-    const navbar = document.querySelector(".navbar");
-    if (!navbar) return;
-    const h = Math.ceil(navbar.getBoundingClientRect().height);
-    // set a CSS variable if you prefer, or set padding on body
-    document.documentElement.style.setProperty("--navbar-height", `${h}px`);
-    document.body.style.paddingTop = `${h}px`;
-  }
-
-  // Run on load and when window resizes (debounced)
-  document.addEventListener("DOMContentLoaded", syncNavbarSpacing);
-  window.addEventListener("load", syncNavbarSpacing);
-  let resizeTimer;
-  window.addEventListener("resize", function () {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(syncNavbarSpacing, 120);
+    ProjectsManager.addProject(projectData);
+    form.reset();
+    startDate.value = todayISO();
+    renderProjects();
+    showToast("Project added");
   });
 
-  // If your UI can change the navbar height (e.g., toggling mobile menu),
-  // call syncNavbarSpacing() after those actions as well.
-})();
+  document.getElementById("clear-project-form").addEventListener("click", () => {
+    form.reset();
+    startDate.value = todayISO();
+  });
+
+  document.getElementById("view-projects").addEventListener("click", (e) => {
+    const button = e.target.closest("[data-project-action]");
+    if (!button) return;
+    const id = Number(button.closest("[data-id]").dataset.id);
+    if (button.dataset.projectAction === "complete") completeProject(id);
+    if (button.dataset.projectAction === "edit") editProject(id);
+    if (button.dataset.projectAction === "delete") deleteProject(id);
+  });
+}
+
+/* ============================================
+   BACKUP: EXPORT / IMPORT
+   ============================================ */
 
 /* ===== Export localStorage to a JSON file ===== */
 function exportLocalStorage(keys = []) {
@@ -1757,9 +1742,7 @@ function exportLocalStorage(keys = []) {
 
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], { type: "application/json" });
-  const filename = `notes-data-${new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-")}.json`;
+  const filename = `notes-data-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -1772,21 +1755,15 @@ function exportLocalStorage(keys = []) {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
-/* ===== Import JSON file (file object or input event) =====
+/* ===== Import JSON file =====
    strategy: 'merge' | 'replace' | 'ask' (default 'ask' uses confirm prompts)
+   Throws if the file isn't valid JSON; the caller reports success or failure.
 */
 async function importLocalStorageFile(file, options = {}) {
   const { strategy = "ask", keysToImport = null } = options;
   if (!file) throw new Error("No file provided");
 
-  const text = await file.text();
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (err) {
-    alert("Selected file is not valid JSON.");
-    throw err;
-  }
+  const parsed = JSON.parse(await file.text());
 
   // Support both { data: { key: value } } (our export shape) and raw key:value object
   const incomingData = parsed && parsed.data ? parsed.data : parsed;
@@ -1809,34 +1786,26 @@ async function importLocalStorageFile(file, options = {}) {
     // Resolve strategy
     let chosenStrategy = strategy;
     if (strategy === "ask") {
-      // Simple UI: confirm -> replace, cancel -> merge (if possible)
       const doReplace = confirm(
         `Import key "${k}": replace existing value? [OK=Replace, Cancel=Merge if possible]`
       );
       chosenStrategy = doReplace ? "replace" : "merge";
     }
 
-    if (chosenStrategy === "replace") {
-      // Overwrite
-      localStorage.setItem(k, JSON.stringify(incomingValue));
-    } else if (chosenStrategy === "merge") {
+    if (chosenStrategy === "merge") {
       // Attempt safe merges for arrays or objects; otherwise replace
       if (Array.isArray(existingValue) && Array.isArray(incomingValue)) {
-        const merged = mergeArraysById(existingValue, incomingValue);
-        localStorage.setItem(k, JSON.stringify(merged));
+        localStorage.setItem(k, JSON.stringify(mergeArraysById(existingValue, incomingValue)));
       } else if (isPlainObject(existingValue) && isPlainObject(incomingValue)) {
-        const mergedObj = { ...existingValue, ...incomingValue };
-        localStorage.setItem(k, JSON.stringify(mergedObj));
+        localStorage.setItem(k, JSON.stringify({ ...existingValue, ...incomingValue }));
       } else {
-        // Not mergeable -> replace
         localStorage.setItem(k, JSON.stringify(incomingValue));
       }
     } else {
-      // unknown strategy fallback -> replace
+      // "replace" (or anything unexpected) overwrites
       localStorage.setItem(k, JSON.stringify(incomingValue));
     }
   }
-  alert("Import complete.");
 }
 
 /* ===== Helpers ===== */
@@ -1847,7 +1816,6 @@ function isPlainObject(v) {
 // Merge two arrays of objects by 'id' where possible.
 // Keeps existing items and adds new items from incoming; updates items with same id by shallow-merge.
 function mergeArraysById(existing = [], incoming = []) {
-  // build lookup by id from existing
   const out = [];
   const existingById = new Map();
   existing.forEach((it) => {
@@ -1858,15 +1826,12 @@ function mergeArraysById(existing = [], incoming = []) {
 
   // incorporate incoming: if id exists, shallow-merge; otherwise push
   incoming.forEach((incomingItem) => {
-    const id =
-      incomingItem &&
-      (incomingItem.id ?? incomingItem.ID ?? incomingItem.key ?? null);
+    const id = incomingItem && (incomingItem.id ?? incomingItem.ID ?? incomingItem.key ?? null);
     if (id != null) {
       const key = String(id);
       if (existingById.has(key)) {
         // merge (incoming wins for conflicts)
-        const merged = { ...existingById.get(key), ...incomingItem };
-        existingById.set(key, merged);
+        existingById.set(key, { ...existingById.get(key), ...incomingItem });
       } else {
         existingById.set(key, incomingItem);
       }
@@ -1880,71 +1845,116 @@ function mergeArraysById(existing = [], incoming = []) {
   return out.concat(Array.from(existingById.values()));
 }
 
-/* ===== Convenience UI wiring =====
-   Call `installStorageExportImportUI()` once after DOMContentLoaded.
-   It will add two small buttons to the top-right of the page. */
-function installStorageExportImportUI(config = {}) {
-  const container = document.createElement("div");
-  container.className = "storage-export-import-ui";
-  container.style.position = "fixed";
-  container.style.right = "200px";
-  container.style.top = "12px";
-  container.style.zIndex = 9999;
-  container.style.display = "flex";
-  container.style.gap = "8px";
+function exportBackup() {
+  exportLocalStorage([NOTES_KEY, PROJECTS_KEY]);
+  showToast("Backup downloaded (notes + projects)", { icon: "fa-solid fa-file-export" });
+}
 
-  const exportBtn = document.createElement("button");
-  exportBtn.textContent = "Export Data";
-  exportBtn.className = "btn-export-data";
-  exportBtn.style.padding = "6px 10px";
+function chooseImportFile() {
+  const input = document.getElementById("import-file");
+  input.value = "";
+  input.click();
+}
 
-  const importBtn = document.createElement("button");
-  importBtn.textContent = "Import Data";
-  importBtn.className = "btn-import-data";
-  importBtn.style.padding = "6px 10px";
+function setupBackup() {
+  document.getElementById("import-file").addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
 
-  container.appendChild(exportBtn);
-  container.appendChild(importBtn);
-  document.body.appendChild(container);
-
-  // Hidden file input for import
-  const fileInput = document.createElement("input");
-  fileInput.type = "file";
-  fileInput.accept = ".json,application/json";
-  fileInput.style.display = "none";
-  document.body.appendChild(fileInput);
-
-  exportBtn.addEventListener("click", function () {
-    // Example: export only 'notes' and 'analytics_projects' keys. Remove keys arg to export all.
-    exportLocalStorage(["notes", "analytics_projects"]);
-  });
-
-  importBtn.addEventListener("click", function () {
-    fileInput.value = "";
-    fileInput.click();
-  });
-
-  fileInput.addEventListener("change", async function (e) {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
+    let parsed;
     try {
-      // Ask user: replace or merge
-      const choice = confirm(
-        "Click OK to REPLACE storage keys from file. Click Cancel to MERGE where possible."
-      );
-      await importLocalStorageFile(f, {
-        strategy: choice ? "replace" : "merge",
+      parsed = JSON.parse(await file.text());
+    } catch (err) {
+      showError("That file isn't a valid backup (.json).");
+      return;
+    }
+    const data = parsed && parsed.data ? parsed.data : parsed;
+    confirmImport(file, {
+      notes: Array.isArray(data && data[NOTES_KEY]) ? data[NOTES_KEY].length : 0,
+      projects: Array.isArray(data && data[PROJECTS_KEY]) ? data[PROJECTS_KEY].length : 0,
+      exportedAt: parsed && parsed.exportedAt,
+    });
+  });
+}
+
+// Ask Merge or Replace before touching saved data
+function confirmImport(file, summary) {
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const exported = summary.exportedAt ? ` · exported ${formatShortDate(summary.exportedAt)}` : "";
+
+  const modal = openModal(
+    `
+    <header class="card-head">
+      <h2><i class="fa-solid fa-file-import"></i> Import backup</h2>
+      <button type="button" class="btn btn-icon btn-ghost" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <div class="card-body stack">
+      <div class="import-file">
+        <span class="link-ico"><i class="fa-regular fa-file-lines"></i></span>
+        <div><strong>${escapeHtml(file.name)}</strong><span>${plural(summary.notes, "note")} · ${plural(summary.projects, "project")}${exported}</span></div>
+      </div>
+      <p class="modal-text"><strong>Merge</strong> keeps what's already here and adds or updates items from the file.
+        <strong>Replace</strong> overwrites what's here with the file's contents.</p>
+    </div>
+    <footer class="card-foot">
+      <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+      <button type="button" class="btn btn-danger-outline" data-import="replace">Replace</button>
+      <button type="button" class="btn btn-primary" data-import="merge">Merge</button>
+    </footer>`,
+    { size: "is-small" }
+  );
+
+  modal.addEventListener("click", async (e) => {
+    const choice = e.target.closest("[data-import]");
+    if (!choice) return;
+    const strategy = choice.dataset.import;
+    closeModal(modal);
+    try {
+      await importLocalStorageFile(file, { strategy });
+      showView(viewFromHash());
+      showToast(strategy === "replace" ? "Backup imported. Existing data replaced." : "Backup imported and merged.", {
+        icon: "fa-solid fa-file-import",
       });
-      // Optional: refresh UI after import: call your app's load functions
-      if (typeof loadNotes === "function") loadNotes();
-      if (typeof renderProjects === "function") renderProjects();
     } catch (err) {
       console.error("Import failed", err);
-      alert("Import failed. Check console for details.");
+      showError("Import failed. Check the console for details.");
     }
   });
 }
 
-window.addEventListener("DOMContentLoaded", function () {
-  installStorageExportImportUI();
+/* ============================================
+   STARTUP
+   ============================================ */
+
+// Form panels start collapsed on narrow screens so the list shows first, and
+// always reopen on wide screens (where they can't be collapsed)
+function setupComposers() {
+  const narrow = window.matchMedia("(max-width: 960px)");
+  const composers = document.querySelectorAll("details.composer");
+  composers.forEach((panel) => {
+    if (narrow.matches) panel.open = false;
+    panel.querySelector("summary").addEventListener("click", (e) => {
+      if (!narrow.matches) e.preventDefault();
+    });
+  });
+  narrow.addEventListener("change", () => {
+    if (!narrow.matches) composers.forEach((panel) => (panel.open = true));
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupMenus();
+  setupEmbeds();
+  setupQuickLinks();
+  setupNotes();
+  setupProjects();
+  setupBackup();
+  setupComposers();
+  showView(viewFromHash());
+});
+
+window.addEventListener("hashchange", () => {
+  setMoreSheet(false);
+  showView(viewFromHash());
+  window.scrollTo(0, 0);
 });
