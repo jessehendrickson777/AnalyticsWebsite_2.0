@@ -141,68 +141,6 @@ function closeModal(modal) {
   }
 }
 
-/* ---------- Bulleted note editing ----------
-   "• " starts a bullet and "  ○ " a sub-bullet. Enter continues the list,
-   Enter on an empty bullet ends it, and Tab turns a bullet into a sub-bullet. */
-
-function insertBullet(textarea) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  textarea.value = textarea.value.substring(0, start) + "• " + textarea.value.substring(end);
-  textarea.selectionStart = textarea.selectionEnd = start + 2;
-  textarea.focus();
-}
-
-function enableBulletEditing(textarea) {
-  textarea.addEventListener("keydown", function (e) {
-    const value = textarea.value;
-    const start = textarea.selectionStart;
-    const lastNewline = value.lastIndexOf("\n", start - 1);
-    const lineStart = lastNewline + 1;
-    const currentLine = value.slice(lineStart, start);
-
-    if (e.key === "Tab") {
-      e.preventDefault();
-      if (currentLine.startsWith("• ") && !currentLine.startsWith("  ○ ")) {
-        const before = value.substring(0, lineStart);
-        const after = value.substring(start);
-        const lineContent = currentLine.slice(2);
-        textarea.value = before + "  ○ " + lineContent + after;
-        textarea.selectionStart = textarea.selectionEnd = lineStart + 4 + lineContent.length;
-      } else {
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        textarea.value = before + "  " + after;
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
-      }
-    } else if (e.key === "Enter") {
-      if (currentLine.startsWith("  ○ ") && currentLine.trim() !== "○") {
-        e.preventDefault();
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        textarea.value = before + "\n  ○ " + after;
-        textarea.selectionStart = textarea.selectionEnd = start + 5;
-      } else if (currentLine.startsWith("• ") && currentLine.trim() !== "•") {
-        e.preventDefault();
-        const before = value.substring(0, start);
-        const after = value.substring(start);
-        textarea.value = before + "\n• " + after;
-        textarea.selectionStart = textarea.selectionEnd = start + 3;
-      } else if (
-        currentLine.trim() === "•" ||
-        currentLine.trim() === "○" ||
-        currentLine.trim() === "  ○"
-      ) {
-        e.preventDefault();
-        const before = value.substring(0, lineStart);
-        const after = value.substring(start);
-        textarea.value = before + "\n" + after;
-        textarea.selectionStart = textarea.selectionEnd = lineStart + 1;
-      }
-    }
-  });
-}
-
 /* ============================================
    VIEWS (hash routing)
    ============================================ */
@@ -245,6 +183,7 @@ function showView(view) {
     if (!frame.getAttribute("src")) frame.src = frame.dataset.src;
   });
 
+  if (view !== "notes") setComposerExpanded(false);
   if (view === "home") renderHome();
   if (view === "notes") loadNotes();
   if (view === "fiscal") renderFiscalCalendar();
@@ -476,7 +415,7 @@ function renderHomeNotes() {
 
   list.innerHTML = notes
     .map((note) => {
-      const firstLine = (note.content.split("\n").find((l) => l.trim()) || "").replace(/^\s*[•○]\s/, "");
+      const firstLine = (note.content.split("\n").find((l) => l.trim()) || "").replace(/^\s*([•○▪☐☑]|\d+\.|[a-z]\.)\s/, "");
       return `
       <a class="mini-row" href="#notes">
         <span class="mini-main"><strong>${escapeHtml(note.title || "Untitled note")}</strong><span>${escapeHtml(firstLine)}</span></span>
@@ -488,11 +427,24 @@ function renderHomeNotes() {
 
 /* ============================================
    NOTES
+
+   A note is { id, title, date, content, html, pinned, createdAt }.
+   - html is the formatted note (bold, highlights, lists, checklists).
+   - content is a plain-text copy built from html on every save, using the
+     original "• " / "  ○ " bullet style. Email uses it, search reads it,
+     and the old site can still show the note.
+   Notes saved before formatting existed only have content; they render
+   from it and gain html the next time they are edited.
    ============================================ */
+
+const NOTE_DRAFT_KEY = "notes_draft";
+const NOTE_SORT_KEY = "notes_sort";
+const HIGHLIGHT_COLORS = ["#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8"];
 
 // Reads saved notes and upgrades older shapes (plain strings, other key
 // names, missing ids) to { id, title, content, date, createdAt }. Anything
-// upgraded is saved back so ids stay stable between visits.
+// upgraded is saved back so ids stay stable between visits. Other fields
+// (html, pinned) are kept as they are.
 function getNotes() {
   const raw = readStoredArray(NOTES_KEY);
   let needSave = false;
@@ -535,6 +487,7 @@ function getNotes() {
     if (!createdAt) needSave = true;
 
     return {
+      ...item,
       id: Number(id),
       title: title || "",
       content: content || "",
@@ -570,57 +523,16 @@ function sortNotes(notes) {
   });
 }
 
-function formatNoteBody(content) {
-  return (content || "")
-    .split("\n")
-    .map((line) => {
-      if (line.startsWith("  ○ ") || line.startsWith("  • ")) {
-        return `<div class="ln-sb">${escapeHtml(line.slice(4))}</div>`;
-      }
-      if (line.startsWith("• ")) return `<div class="ln-b">${escapeHtml(line.slice(2))}</div>`;
-      if (line.trim()) return `<div>${escapeHtml(line)}</div>`;
-      return '<div class="ln-gap"></div>';
-    })
-    .join("");
-}
-
-function renderNoteCard(note) {
-  return `
-    <article class="card note" data-id="${note.id}">
-      <header class="note-head">
-        <h3 class="note-title">${escapeHtml(note.title || "Untitled note")}</h3>
-        <span class="note-date"><i class="fa-regular fa-calendar"></i>${note.date ? formatShortDate(note.date) : "No date set"}</span>
-      </header>
-      <div class="note-body">${formatNoteBody(note.content)}</div>
-      <footer class="note-foot">
-        <button type="button" class="btn btn-sm btn-ghost" data-note-action="edit"><i class="fa-solid fa-pen"></i><span>Edit</span></button>
-        <button type="button" class="btn btn-sm btn-ghost" data-note-action="email"><i class="fa-regular fa-paper-plane"></i><span>Email to me</span></button>
-        <button type="button" class="btn btn-sm btn-ghost btn-danger" data-note-action="delete"><i class="fa-regular fa-trash-can"></i><span>Delete</span></button>
-      </footer>
-    </article>`;
-}
-
-function loadNotes() {
-  const list = document.getElementById("notes-list");
-  const notes = sortNotes(getNotes());
-  document.getElementById("notes-count").textContent = notes.length;
-
-  list.innerHTML = notes.length
-    ? notes.map(renderNoteCard).join("")
-    : '<div class="card empty-state"><i class="fa-regular fa-note-sticky"></i><p>No notes yet. Notes you save will show up here.</p></div>';
-  applyNoteSearch();
-}
-
-function applyNoteSearch() {
-  const query = document.getElementById("note-search").value.trim().toLowerCase();
-  const cards = document.querySelectorAll("#notes-list .note");
-  let shown = 0;
-  cards.forEach((card) => {
-    const match = !query || card.textContent.toLowerCase().includes(query);
-    card.hidden = !match;
-    if (match) shown++;
-  });
-  document.getElementById("notes-no-match").hidden = !cards.length || shown > 0;
+// Newest / Oldest / A–Z, with pinned notes always on top
+function orderNotes(notes, sort) {
+  let ordered = sortNotes(notes);
+  if (sort === "old") ordered.reverse();
+  if (sort === "az") {
+    ordered = notes
+      .slice()
+      .sort((a, b) => (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base", numeric: true }));
+  }
+  return ordered.filter((n) => n.pinned).concat(ordered.filter((n) => !n.pinned));
 }
 
 function newNoteId(notes) {
@@ -629,71 +541,513 @@ function newNoteId(notes) {
   return id;
 }
 
-function setupNotes() {
-  const form = document.getElementById("note-form");
-  const title = document.getElementById("note-title");
-  const date = document.getElementById("note-date");
-  const content = document.getElementById("note-content");
+/* ---------- Formatted text ---------- */
 
-  date.value = todayISO();
-  enableBulletEditing(content);
-  document.getElementById("note-bullet-btn").addEventListener("click", () => insertBullet(content));
+const RICH_TAGS = new Set(["P", "DIV", "BR", "H3", "STRONG", "B", "EM", "I", "U", "S", "STRIKE", "DEL", "UL", "OL", "LI", "A", "SPAN", "MARK", "HR"]);
+const INLINE_HIGHLIGHT_TAGS = new Set(["SPAN", "MARK", "B", "STRONG", "EM", "I", "U", "S", "STRIKE", "DEL"]);
+const DROPPED_TAGS = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "TEMPLATE", "NOSCRIPT", "HEAD", "TITLE", "META", "LINK", "SVG", "MATH", "IMG", "PICTURE", "VIDEO", "AUDIO", "CANVAS", "FORM", "INPUT", "BUTTON", "SELECT", "TEXTAREA"]);
 
-  document.getElementById("note-clear-btn").addEventListener("click", () => {
-    title.value = "";
-    content.value = "";
-    date.value = todayISO();
-    title.focus();
-  });
+function parseHtml(html) {
+  // DOMParser documents are inert: no scripts run and no images load
+  return new DOMParser().parseFromString(`<body>${html || ""}</body>`, "text/html").body;
+}
 
-  document.getElementById("notes-refresh-btn").addEventListener("click", () => {
-    loadNotes();
-    showToast("Notes refreshed", { icon: "fa-solid fa-rotate-right" });
-  });
+// Keep only the formatting the editor makes. Notes can arrive from imported
+// files or pasted web pages, so everything else is unwrapped or dropped.
+function sanitizeRichHtml(html) {
+  const body = parseHtml(html);
+  cleanRichNode(body);
+  return body.innerHTML;
+}
 
-  document.getElementById("note-search").addEventListener("input", applyNoteSearch);
+function cleanRichNode(parent) {
+  [...parent.childNodes].forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) return;
+    if (node.nodeType !== Node.ELEMENT_NODE || DROPPED_TAGS.has(node.tagName)) {
+      node.remove();
+      return;
+    }
+    cleanRichNode(node);
+    const tag = node.tagName;
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const noteTitle = title.value.trim();
-    const noteContent = content.value;
-    if (!noteTitle || !noteContent.trim()) {
-      showError("Add a title and some content first.");
+    if (/^H[1-6]$/.test(tag) && tag !== "H3") {
+      const heading = node.ownerDocument.createElement("h3");
+      heading.append(...node.childNodes);
+      node.replaceWith(heading);
+      return;
+    }
+    if (!RICH_TAGS.has(tag)) {
+      // Keep table cells apart when a pasted table is flattened
+      if (tag === "TD" || tag === "TH") node.append(" ");
+      if (tag === "TR") node.append(node.ownerDocument.createElement("br"));
+      node.replaceWith(...node.childNodes);
       return;
     }
 
-    const notes = getNotes();
-    notes.push({
-      id: newNoteId(notes),
-      title: noteTitle,
-      content: noteContent,
-      date: date.value || todayISO(),
-      createdAt: new Date().toISOString(),
-    });
-    saveNotes(notes);
+    const href = tag === "A" ? (node.getAttribute("href") || "").trim() : "";
+    const checked = node.getAttribute("data-checked");
+    const isChecklist = tag === "UL" && node.classList.contains("checklist");
+    const highlightClass = [...node.classList].find((c) => /^hl-(yellow|green|blue|pink)$/.test(c));
+    // Highlights can land on any inline tag (Chrome puts them on <b> when the text is bold)
+    const background = INLINE_HIGHLIGHT_TAGS.has(tag) ? node.style.backgroundColor : "";
 
-    title.value = "";
-    content.value = "";
-    date.value = todayISO();
-    loadNotes();
-    showToast("Note saved");
-  });
+    [...node.attributes].forEach((attr) => node.removeAttribute(attr.name));
 
-  document.getElementById("notes-list").addEventListener("click", (e) => {
-    const button = e.target.closest("[data-note-action]");
-    if (!button) return;
-    const id = Number(button.closest("[data-id]").dataset.id);
-    if (button.dataset.noteAction === "edit") editNoteById(id);
-    if (button.dataset.noteAction === "email") emailNoteById(id);
-    if (button.dataset.noteAction === "delete") deleteNoteById(id);
+    if (tag === "A") {
+      if (!/^(https?:|mailto:)/i.test(href)) {
+        node.replaceWith(...node.childNodes);
+        return;
+      }
+      node.setAttribute("href", href);
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener");
+    }
+    if (isChecklist) node.className = "checklist";
+    if (tag === "LI" && checked !== null) node.setAttribute("data-checked", checked === "true" ? "true" : "false");
+    if (highlightClass) node.className = highlightClass;
+    if (background && background !== "transparent" && !/rgba\(0, 0, 0, 0\)/.test(background)) {
+      node.style.backgroundColor = background;
+    }
+    if (tag === "SPAN" && !node.attributes.length) node.replaceWith(...node.childNodes);
+    // Completely empty paragraphs are editor leftovers; "<p><br></p>" (a blank line) stays
+    if ((tag === "P" || tag === "DIV") && !node.hasChildNodes()) node.remove();
   });
 }
 
-function deleteNoteById(noteId) {
-  if (!confirm("Are you sure you want to delete this note? This cannot be undone.")) return;
-  saveNotes(getNotes().filter((note) => note.id !== noteId));
+// Old plain-text notes ("• " bullets, "  ○ " sub-bullets) as formatted HTML
+function legacyNoteToHtml(text) {
+  let html = "";
+  let level = 0; // 0 = not in a list, 1 = bullets, 2 = sub-bullets
+  const closeTo = (target) => {
+    if (level === 2 && target < 2) {
+      html += "</ul></li>";
+      level = 1;
+    }
+    if (level === 1 && target < 1) {
+      html += "</ul>";
+      level = 0;
+    }
+  };
+
+  (text || "").split("\n").forEach((line) => {
+    if (line.startsWith("  ○ ") || line.startsWith("  • ")) {
+      if (level === 0) {
+        html += "<ul><li>";
+        level = 1;
+      }
+      if (level === 1) {
+        html = html.replace(/<\/li>$/, "");
+        html += "<ul>";
+        level = 2;
+      }
+      html += `<li>${escapeHtml(line.slice(4))}</li>`;
+    } else if (line.startsWith("• ")) {
+      closeTo(1);
+      if (level === 0) {
+        html += "<ul>";
+        level = 1;
+      }
+      html += `<li>${escapeHtml(line.slice(2))}</li>`;
+    } else {
+      closeTo(0);
+      html += line.trim() ? `<p>${escapeHtml(line)}</p>` : "<p><br></p>";
+    }
+  });
+  closeTo(0);
+  return html;
+}
+
+// Plain-text version of formatted HTML, in the original bullet style:
+// "• " bullets, "  ○ " sub-bullets, "1. " numbers, "☐ "/"☑ " checklist items
+function richToPlainText(html) {
+  const lines = [];
+  const squash = (s) => s.replace(/\s+/g, " ").trim();
+
+  function inlineText(el) {
+    let text = "";
+    el.childNodes.forEach((n) => {
+      if (n.nodeType === Node.TEXT_NODE) text += n.nodeValue;
+      else if (n.nodeName === "BR") text += "\n";
+      else if (n.nodeName !== "UL" && n.nodeName !== "OL") text += inlineText(n);
+    });
+    return text;
+  }
+
+  function listLines(list, depth, parentIsOrdered) {
+    const checklist = list.classList.contains("checklist");
+    let number = 0;
+    list.childNodes.forEach((item) => {
+      // Chrome can nest a list straight inside another list when indenting
+      if (item.nodeName === "UL" || item.nodeName === "OL") {
+        listLines(item, depth + 1, list.nodeName === "OL");
+        return;
+      }
+      if (item.nodeName !== "LI") return;
+      number++;
+      let marker;
+      if (checklist) marker = item.getAttribute("data-checked") === "true" ? "☑ " : "☐ ";
+      else if (list.nodeName === "OL") marker = depth > 0 && parentIsOrdered ? `${String.fromCharCode(96 + ((number - 1) % 26) + 1)}. ` : `${number}. `;
+      else marker = ["• ", "○ ", "▪ "][Math.min(depth, 2)];
+      lines.push("  ".repeat(depth) + marker + squash(inlineText(item)));
+      item.childNodes.forEach((child) => {
+        if (child.nodeName === "UL" || child.nodeName === "OL") listLines(child, depth + 1, list.nodeName === "OL");
+      });
+    });
+  }
+
+  // Walks blocks in document order, so lists or paragraphs nested inside a
+  // <div> (common in pasted web content) come out where they appear
+  function walk(container) {
+    let line = "";
+    const flush = (keepBlank) => {
+      const text = squash(line);
+      if (text || keepBlank) lines.push(text);
+      line = "";
+    };
+    container.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        line += node.nodeValue;
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.nodeName;
+      if (tag === "BR") {
+        flush(true); // "<p><br></p>" is an intentional blank line
+      } else if (tag === "UL" || tag === "OL") {
+        flush();
+        listLines(node, 0, false);
+      } else if (tag === "HR") {
+        flush();
+        lines.push("———");
+      } else if (tag === "P" || tag === "DIV" || tag === "H3") {
+        flush();
+        walk(node);
+      } else {
+        line += inlineText(node);
+      }
+    });
+    flush();
+  }
+
+  walk(parseHtml(html));
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// The HTML to show for a note. If the note was edited somewhere that only
+// knows plain text (the old site), its html no longer matches its content,
+// so the plain text wins.
+function noteHtml(note) {
+  if (note.html) {
+    const clean = sanitizeRichHtml(note.html);
+    if (richToPlainText(clean) === (note.content || "").trim()) return clean;
+  }
+  return legacyNoteToHtml(note.content);
+}
+
+function noteHasText(html) {
+  const body = parseHtml(html);
+  return Boolean(body.textContent.trim() || body.querySelector("li, hr"));
+}
+
+/* ---------- Note list ---------- */
+
+const notesUi = {
+  query: "",
+  sort: localStorage.getItem(NOTE_SORT_KEY) || "new",
+};
+
+function checklistProgress(html) {
+  const items = parseHtml(html).querySelectorAll("ul.checklist > li");
+  if (!items.length) return "";
+  const done = [...items].filter((li) => li.getAttribute("data-checked") === "true").length;
+  return `<span class="progress"><span class="progress-bar"><span style="width:${Math.round((done / items.length) * 100)}%"></span></span>${done} of ${items.length} done</span>`;
+}
+
+function renderNoteCard(note, html) {
+  const editing = noteComposer.editingId === note.id;
+  return `
+    <article class="card note${note.pinned ? " is-pinned" : ""}${editing ? " is-editing" : ""}" data-id="${note.id}">
+      <header class="note-head">
+        <div class="note-headline">
+          <h3 class="note-title">${escapeHtml(note.title || "Untitled note")}</h3>
+          <div class="note-meta">
+            <span class="note-date"><i class="fa-regular fa-calendar"></i>${note.date ? formatShortDate(note.date) : "No date set"}</span>
+            ${editing ? '<span class="pill pill-brand"><i class="fa-solid fa-pen"></i>Editing</span>' : ""}
+            ${checklistProgress(html)}
+          </div>
+        </div>
+        <button type="button" class="pin-btn${note.pinned ? " is-on" : ""}" data-note-action="pin" title="${note.pinned ? "Unpin" : "Pin to top"}" aria-label="${note.pinned ? "Unpin note" : "Pin note to top"}" aria-pressed="${Boolean(note.pinned)}"><i class="fa-solid fa-thumbtack"></i></button>
+      </header>
+      <div class="rich note-body">${html}</div>
+      <footer class="note-foot">
+        <button type="button" class="btn btn-sm btn-ghost" data-note-action="edit"><i class="fa-solid fa-pen"></i><span>Edit</span></button>
+        <button type="button" class="btn btn-sm btn-ghost" data-note-action="email"><i class="fa-regular fa-paper-plane"></i><span>Email to me</span></button>
+        <button type="button" class="btn btn-sm btn-ghost" data-note-action="copy"><i class="fa-regular fa-copy"></i><span>Copy</span></button>
+        <button type="button" class="btn btn-sm btn-ghost btn-danger" data-note-action="delete"><i class="fa-regular fa-trash-can"></i><span>Delete</span></button>
+      </footer>
+    </article>`;
+}
+
+// Wrap each search match in <mark class="hit"> without touching the markup around it
+function highlightMatches(root, query) {
+  const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+  textNodes.forEach((node) => {
+    const text = node.nodeValue;
+    pattern.lastIndex = 0;
+    if (!pattern.test(text)) return;
+    pattern.lastIndex = 0;
+    const fragment = document.createDocumentFragment();
+    let last = 0;
+    text.replace(pattern, (match, index) => {
+      fragment.append(text.slice(last, index));
+      const mark = document.createElement("mark");
+      mark.className = "hit";
+      mark.textContent = match;
+      fragment.append(mark);
+      last = index + match.length;
+    });
+    fragment.append(text.slice(last));
+    node.replaceWith(fragment);
+  });
+}
+
+function loadNotes() {
+  const list = document.getElementById("notes-list");
+  const summary = document.getElementById("notes-search-summary");
+  const all = getNotes();
+  const query = notesUi.query.trim();
+  const needle = query.toLowerCase();
+  document.getElementById("notes-count").textContent = all.length;
+  document.getElementById("note-sort").value = notesUi.sort;
+
+  // Search the title and the note text only (not dates or button labels)
+  const matches = all.filter(
+    (n) => !needle || `${n.title}\n${n.content}`.toLowerCase().includes(needle)
+  );
+  const notes = orderNotes(matches, notesUi.sort);
+
+  summary.innerHTML = query
+    ? `<div class="search-summary"><i class="fa-solid fa-magnifying-glass"></i><span><strong>${notes.length}</strong> note${
+        notes.length === 1 ? "" : "s"
+      } contain “${escapeHtml(query)}”</span><button type="button" data-clear-search>Clear search</button></div>`
+    : "";
+
+  if (!all.length) {
+    list.innerHTML = '<div class="card empty-state"><i class="fa-regular fa-note-sticky"></i><p>No notes yet. Notes you save will show up here.</p></div>';
+    return;
+  }
+  if (!notes.length) {
+    list.innerHTML = '<div class="card empty-state"><i class="fa-solid fa-magnifying-glass"></i><p>No notes match that search.</p></div>';
+    return;
+  }
+
+  list.innerHTML = notes.map((n) => renderNoteCard(n, noteHtml(n))).join("");
+
+  list.querySelectorAll(".note").forEach((card) => {
+    const body = card.querySelector(".note-body");
+    if (needle) {
+      highlightMatches(card.querySelector(".note-title"), query);
+      highlightMatches(body, query);
+    } else if (body.scrollHeight > 400) {
+      // Long notes start collapsed (search results always show in full)
+      body.classList.add("is-clamped");
+      body.insertAdjacentHTML("afterend", '<button type="button" class="show-more" data-note-action="more">Show more</button>');
+    }
+  });
+}
+
+function updateNote(noteId, changes) {
+  const notes = getNotes();
+  const index = notes.findIndex((n) => n.id === noteId);
+  if (index === -1) return null;
+  notes[index] = { ...notes[index], ...changes };
+  saveNotes(notes);
+  return notes[index];
+}
+
+function toggleChecklistItem(card, item) {
+  const noteId = Number(card.dataset.id);
+  const note = getNotes().find((n) => n.id === noteId);
+  if (!note) return;
+  const index = [...card.querySelectorAll(".note-body ul.checklist > li")].indexOf(item);
+  const body = parseHtml(noteHtml(note));
+  const stored = body.querySelectorAll("ul.checklist > li")[index];
+  if (!stored) return;
+  stored.setAttribute("data-checked", stored.getAttribute("data-checked") === "true" ? "false" : "true");
+  const html = sanitizeRichHtml(body.innerHTML);
+  updateNote(noteId, { html, content: richToPlainText(html) });
   loadNotes();
-  showToast("Note deleted", { icon: "fa-regular fa-trash-can" });
+}
+
+// Clicks in the 24px box to the left of a checklist item
+function clickedCheckbox(e) {
+  const item = e.target.closest("ul.checklist > li");
+  if (!item) return null;
+  return e.clientX - item.getBoundingClientRect().left <= 24 ? item : null;
+}
+
+/* ---------- Composer (new note and edit) ---------- */
+
+const noteComposer = { editingId: null };
+
+function noteEditor() {
+  return document.getElementById("note-editor");
+}
+
+function currentEditorBlock() {
+  const selection = getSelection();
+  if (!selection.rangeCount) return null;
+  let node = selection.anchorNode;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+  const editor = noteEditor();
+  if (!node || !editor.contains(node) || node === editor) return null;
+  return node.closest("li, p, h3, div");
+}
+
+function toggleChecklist() {
+  const block = currentEditorBlock();
+  const list = block && block.closest("ul, ol");
+  if (list && list.classList.contains("checklist")) {
+    document.execCommand("insertUnorderedList"); // turns the checklist back into text
+    return;
+  }
+  if (!list || list.tagName !== "UL") document.execCommand("insertUnorderedList");
+  const after = currentEditorBlock();
+  const ul = after && after.closest("ul");
+  if (ul) {
+    ul.classList.add("checklist");
+    ul.querySelectorAll(":scope > li").forEach((li) => {
+      if (!li.hasAttribute("data-checked")) li.setAttribute("data-checked", "false");
+    });
+  }
+}
+
+function runEditorCommand(command) {
+  noteEditor().focus();
+  if (command === "heading") {
+    const block = currentEditorBlock();
+    document.execCommand("formatBlock", false, block && block.tagName === "H3" ? "<p>" : "<h3>");
+  } else if (command === "checklist") {
+    toggleChecklist();
+  } else if (command === "link") {
+    let url = prompt("Link address", "https://");
+    if (url && url.trim() && url.trim() !== "https://") {
+      url = url.trim();
+      if (!/^(https?:|mailto:)/i.test(url)) url = "https://" + url;
+      document.execCommand("createLink", false, url);
+    }
+  } else if (command === "divider") {
+    document.execCommand("insertHorizontalRule");
+  } else {
+    document.execCommand(command);
+  }
+  onEditorChange();
+}
+
+const TOOLBAR_STATE_COMMANDS = ["bold", "italic", "underline", "strikeThrough", "insertUnorderedList", "insertOrderedList"];
+
+function refreshEditorToolbar() {
+  const toolbar = document.getElementById("note-toolbar");
+  const block = currentEditorBlock();
+  const inChecklist = Boolean(block && block.closest("ul.checklist"));
+  TOOLBAR_STATE_COMMANDS.forEach((command) => {
+    let on = false;
+    try {
+      on = document.queryCommandState(command);
+    } catch (err) {
+      /* not supported */
+    }
+    if (command === "insertUnorderedList" && inChecklist) on = false;
+    toolbar.querySelector(`[data-cmd="${command}"]`).classList.toggle("is-on", on);
+  });
+  toolbar.querySelector('[data-cmd="heading"]').classList.toggle("is-on", Boolean(block && block.tagName === "H3"));
+  toolbar.querySelector('[data-cmd="checklist"]').classList.toggle("is-on", inChecklist);
+}
+
+let draftTimer = null;
+
+// Counted from the text nodes, not innerText, which is empty while the
+// collapsed composer is closed on phones
+function noteWordCount() {
+  const walker = document.createTreeWalker(noteEditor(), NodeFilter.SHOW_TEXT);
+  const parts = [];
+  while (walker.nextNode()) parts.push(walker.currentNode.nodeValue);
+  return parts.join(" ").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function setComposerStatus(text, icon) {
+  document.getElementById("note-draft-status").innerHTML = `${icon ? `<i class="${icon}"></i>` : ""}${escapeHtml(text)}`;
+}
+
+function onEditorChange() {
+  const editor = noteEditor();
+  editor.classList.toggle("is-empty", !noteHasText(editor.innerHTML));
+  refreshEditorToolbar();
+
+  const words = noteWordCount();
+  const wordLabel = `${words} word${words === 1 ? "" : "s"}`;
+  if (noteComposer.editingId !== null) {
+    setComposerStatus(`Editing · ${wordLabel}`, "fa-solid fa-pen");
+    return;
+  }
+  // New notes autosave as a draft, so switching tabs or closing the page keeps them
+  setComposerStatus("Saving draft…", "fa-solid fa-rotate");
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraft, 500);
+}
+
+function saveDraft() {
+  const title = document.getElementById("note-title").value;
+  const html = noteEditor().innerHTML;
+  if (!title.trim() && !noteHasText(html)) {
+    localStorage.removeItem(NOTE_DRAFT_KEY);
+    setComposerStatus(`${noteWordCount()} words`);
+    return;
+  }
+  localStorage.setItem(NOTE_DRAFT_KEY, JSON.stringify({ title, date: document.getElementById("note-date").value, html }));
+  const words = noteWordCount();
+  setComposerStatus(`Draft saved · ${words} word${words === 1 ? "" : "s"}`, "fa-solid fa-circle-check");
+}
+
+function restoreDraft() {
+  let draft = null;
+  try {
+    draft = JSON.parse(localStorage.getItem(NOTE_DRAFT_KEY));
+  } catch (e) {
+    draft = null;
+  }
+  document.getElementById("note-title").value = (draft && draft.title) || "";
+  document.getElementById("note-date").value = (draft && draft.date) || todayISO();
+  noteEditor().innerHTML = draft ? sanitizeRichHtml(draft.html) : "";
+  onEditorChange();
+  clearTimeout(draftTimer);
+  const words = noteWordCount();
+  setComposerStatus(draft ? `Draft restored · ${words} word${words === 1 ? "" : "s"}` : "0 words", draft ? "fa-solid fa-circle-check" : "");
+}
+
+function clearComposer() {
+  localStorage.removeItem(NOTE_DRAFT_KEY);
+  document.getElementById("note-title").value = "";
+  document.getElementById("note-date").value = todayISO();
+  noteEditor().innerHTML = "";
+  onEditorChange();
+  clearTimeout(draftTimer);
+  setComposerStatus("0 words");
+}
+
+function setComposerMode(editingId) {
+  noteComposer.editingId = editingId;
+  const editing = editingId !== null;
+  document.getElementById("composer-heading").innerHTML = editing
+    ? '<i class="fa-solid fa-pen"></i> Edit note'
+    : '<i class="fa-solid fa-pen-to-square"></i> New note';
+  document.getElementById("note-save-btn").innerHTML = `<i class="fa-solid fa-check"></i> ${editing ? "Save changes" : "Save note"}`;
+  document.getElementById("note-clear-btn").textContent = editing ? "Cancel" : "Clear";
+  document.getElementById("note-composer").classList.toggle("is-editing", editing);
 }
 
 function editNoteById(noteId) {
@@ -702,64 +1056,269 @@ function editNoteById(noteId) {
     showError("That note couldn't be found.");
     return;
   }
+  clearTimeout(draftTimer);
+  if (noteComposer.editingId === null) saveDraft(); // keep any unsaved new note
+  document.getElementById("note-composer").open = true;
+  setComposerMode(noteId);
+  document.getElementById("note-title").value = note.title;
+  document.getElementById("note-date").value = note.date || todayISO();
+  noteEditor().innerHTML = noteHtml(note);
+  onEditorChange();
+  loadNotes();
 
-  const modal = openModal(
-    `
-    <form id="edit-note-form">
-      <header class="card-head">
-        <h2><i class="fa-solid fa-pen"></i> Edit note</h2>
-        <button type="button" class="btn btn-icon btn-ghost" data-close-modal aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-      </header>
-      <div class="card-body stack">
-        <div class="field-row">
-          <label class="field"><span>Title</span><input class="input" id="edit-note-title" value="${escapeHtml(note.title)}" required /></label>
-          <label class="field"><span>Date</span><input class="input" type="date" id="edit-note-date" value="${escapeHtml(note.date)}" required /></label>
-        </div>
-        <div class="field">
-          <span>Content</span>
-          <div class="editor">
-            <div class="editor-bar">
-              <button type="button" class="btn btn-sm btn-ghost" id="edit-note-bullet"><i class="fa-solid fa-list-ul"></i> Bullet</button>
-              <span class="editor-hint"><kbd>Tab</kbd> on a bullet adds a sub-bullet</span>
-            </div>
-            <textarea class="editor-text" id="edit-note-content" rows="10" required>${escapeHtml(note.content)}</textarea>
-          </div>
-        </div>
-      </div>
-      <footer class="card-foot">
-        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
-        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save changes</button>
-      </footer>
-    </form>`,
-    { dismissible: false }
-  );
+  const composer = document.getElementById("note-composer");
+  composer.open = true;
+  // Phones get the full-screen editor; on desktop the composer is already in view
+  if (window.matchMedia("(max-width: 960px)").matches) setComposerExpanded(true);
+  else composer.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  document.getElementById("note-title").focus({ preventScroll: true });
+}
 
-  const editContent = modal.querySelector("#edit-note-content");
-  enableBulletEditing(editContent);
-  modal.querySelector("#edit-note-bullet").addEventListener("click", () => insertBullet(editContent));
+function stopEditing() {
+  setComposerMode(null);
+  restoreDraft();
+  loadNotes();
+}
 
-  modal.querySelector("#edit-note-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const updated = {
-      title: modal.querySelector("#edit-note-title").value.trim(),
-      content: editContent.value,
-      date: modal.querySelector("#edit-note-date").value,
-    };
-    if (!updated.title || !updated.content.trim() || !updated.date) {
-      showError("Please fill in the title, date and content.");
-      return;
-    }
+function saveComposer() {
+  const title = document.getElementById("note-title").value.trim();
+  const date = document.getElementById("note-date").value || todayISO();
+  const html = sanitizeRichHtml(noteEditor().innerHTML);
+  if (!title || !noteHasText(html)) {
+    showError("Add a title and some content first.");
+    return;
+  }
+  const content = richToPlainText(html);
 
-    const notes = getNotes();
-    const index = notes.findIndex((n) => n.id === noteId);
-    if (index !== -1) {
-      notes[index] = { ...notes[index], ...updated };
-      saveNotes(notes);
-    }
-    closeModal(modal);
+  if (noteComposer.editingId !== null) {
+    updateNote(noteComposer.editingId, { title, date, html, content, updatedAt: new Date().toISOString() });
+    setComposerMode(null);
+    restoreDraft();
+    setComposerExpanded(false);
     loadNotes();
     showToast("Note updated");
+    return;
+  }
+
+  const notes = getNotes();
+  notes.push({ id: newNoteId(notes), title, date, html, content, pinned: false, createdAt: new Date().toISOString() });
+  saveNotes(notes);
+  clearComposer();
+  setComposerExpanded(false);
+  loadNotes();
+  showToast("Note saved");
+}
+
+// Expand: the composer fills the screen for long notes
+function setComposerExpanded(on) {
+  const composer = document.getElementById("note-composer");
+  const button = document.getElementById("note-expand");
+  const wasOn = composer.classList.contains("is-expanded");
+  if (on === wasOn) return;
+  composer.classList.toggle("is-expanded", on);
+  document.getElementById("note-focus-backdrop").hidden = !on;
+  button.innerHTML = on
+    ? '<i class="fa-solid fa-down-left-and-up-right-to-center"></i>'
+    : '<i class="fa-solid fa-up-right-and-down-left-from-center"></i>';
+  button.title = on ? "Shrink editor" : "Expand editor";
+  button.setAttribute("aria-label", button.title);
+  document.body.classList.toggle(
+    "has-overlay",
+    on || Boolean(document.querySelector(".modal")) || !document.getElementById("more-sheet").hidden
+  );
+  if (on) {
+    composer.open = true;
+    noteEditor().focus();
+  }
+}
+
+function setupNoteEditor() {
+  const editor = noteEditor();
+  const toolbar = document.getElementById("note-toolbar");
+  const highlightMenu = document.getElementById("hl-menu");
+  document.execCommand("defaultParagraphSeparator", false, "p");
+
+  // Keep the text selection when pressing toolbar buttons
+  toolbar.addEventListener("mousedown", (e) => {
+    if (e.target.closest(".tb, .hl-menu button")) e.preventDefault();
   });
+  toolbar.addEventListener("click", (e) => {
+    const button = e.target.closest("[data-cmd]");
+    if (button) runEditorCommand(button.dataset.cmd);
+  });
+
+  document.getElementById("hl-btn").addEventListener("click", () => (highlightMenu.hidden = !highlightMenu.hidden));
+  highlightMenu.addEventListener("click", (e) => {
+    const swatch = e.target.closest("[data-hl]");
+    if (!swatch) return;
+    editor.focus();
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("hiliteColor", false, swatch.dataset.hl);
+    document.execCommand("styleWithCSS", false, false);
+    if (swatch.dataset.hl !== "transparent") document.getElementById("hl-swatch").style.background = swatch.dataset.hl;
+    highlightMenu.hidden = true;
+    onEditorChange();
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".tb-menu-anchor")) highlightMenu.hidden = true;
+  });
+
+  editor.addEventListener("keydown", (e) => {
+    const block = currentEditorBlock();
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (block && block.closest("li")) document.execCommand(e.shiftKey ? "outdent" : "indent");
+      else if (!e.shiftKey) document.execCommand("insertText", false, "    ");
+      onEditorChange();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      runEditorCommand("link");
+      return;
+    }
+    // A new checklist item starts unticked
+    if (e.key === "Enter" && block && block.matches("ul.checklist > li")) {
+      setTimeout(() => {
+        const item = currentEditorBlock();
+        if (item && item.matches("ul.checklist > li")) item.setAttribute("data-checked", "false");
+      }, 0);
+    }
+    // Start a line with "1.", "-", "*" or "[]" and a space to begin a list
+    if (e.key === " " && block && !block.closest("li")) {
+      const command = { "1.": "insertOrderedList", "-": "insertUnorderedList", "*": "insertUnorderedList", "[]": "checklist" }[
+        block.textContent.trim()
+      ];
+      if (!command) return;
+      e.preventDefault();
+      // Let the browser delete the "1." itself so the line stays a proper
+      // empty block; clearing it by hand made Chrome merge it into the line above
+      const range = document.createRange();
+      range.selectNodeContents(block);
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      document.execCommand("delete");
+      runEditorCommand(command);
+    }
+  });
+
+  editor.addEventListener("click", (e) => {
+    const item = clickedCheckbox(e);
+    if (item) {
+      item.setAttribute("data-checked", item.getAttribute("data-checked") === "true" ? "false" : "true");
+      onEditorChange();
+    }
+  });
+
+  // Pasted text keeps its bold, lists and links but nothing else
+  editor.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    if (html) document.execCommand("insertHTML", false, sanitizeRichHtml(html));
+    else document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
+    onEditorChange();
+  });
+  editor.addEventListener("drop", (e) => {
+    if (e.dataTransfer && e.dataTransfer.files.length) e.preventDefault();
+  });
+
+  editor.addEventListener("input", onEditorChange);
+  document.addEventListener("selectionchange", () => {
+    const selection = getSelection();
+    if (selection.anchorNode && editor.contains(selection.anchorNode)) refreshEditorToolbar();
+  });
+}
+
+function setupNotes() {
+  setupNoteEditor();
+
+  document.getElementById("note-title").addEventListener("input", onEditorChange);
+  document.getElementById("note-date").addEventListener("change", onEditorChange);
+
+  document.getElementById("note-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveComposer();
+  });
+
+  document.getElementById("note-clear-btn").addEventListener("click", () => {
+    if (noteComposer.editingId !== null) {
+      setComposerExpanded(false);
+      stopEditing();
+      return;
+    }
+    clearComposer();
+    document.getElementById("note-title").focus();
+  });
+
+  document.getElementById("note-expand").addEventListener("click", (e) => {
+    e.preventDefault(); // the button sits inside the <summary>; don't collapse it
+    setComposerExpanded(!document.getElementById("note-composer").classList.contains("is-expanded"));
+  });
+  document.getElementById("note-focus-backdrop").addEventListener("click", () => setComposerExpanded(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setComposerExpanded(false);
+  });
+
+  document.getElementById("note-search").addEventListener("input", (e) => {
+    notesUi.query = e.target.value;
+    loadNotes();
+  });
+  document.getElementById("note-sort").addEventListener("change", (e) => {
+    notesUi.sort = e.target.value;
+    localStorage.setItem(NOTE_SORT_KEY, notesUi.sort);
+    loadNotes();
+  });
+  document.getElementById("notes-search-summary").addEventListener("click", (e) => {
+    if (!e.target.closest("[data-clear-search]")) return;
+    notesUi.query = "";
+    document.getElementById("note-search").value = "";
+    loadNotes();
+  });
+
+  document.getElementById("notes-list").addEventListener("click", (e) => {
+    const card = e.target.closest(".note[data-id]");
+    if (!card) return;
+    const checkbox = clickedCheckbox(e);
+    if (checkbox) {
+      toggleChecklistItem(card, checkbox);
+      return;
+    }
+    const button = e.target.closest("[data-note-action]");
+    if (!button) return;
+    const id = Number(card.dataset.id);
+    const action = button.dataset.noteAction;
+    if (action === "edit") editNoteById(id);
+    if (action === "email") emailNoteById(id);
+    if (action === "copy") copyNoteById(id);
+    if (action === "delete") deleteNoteById(id);
+    if (action === "pin") {
+      const note = getNotes().find((n) => n.id === id);
+      if (note) {
+        updateNote(id, { pinned: !note.pinned });
+        loadNotes();
+        showToast(note.pinned ? "Note unpinned" : "Pinned to the top", { icon: "fa-solid fa-thumbtack" });
+      }
+    }
+    if (action === "more") {
+      const body = card.querySelector(".note-body");
+      const collapsed = body.classList.toggle("is-clamped");
+      button.textContent = collapsed ? "Show more" : "Show less";
+    }
+  });
+
+  restoreDraft();
+}
+
+function deleteNoteById(noteId) {
+  if (!confirm("Are you sure you want to delete this note? This cannot be undone.")) return;
+  saveNotes(getNotes().filter((note) => note.id !== noteId));
+  if (noteComposer.editingId === noteId) {
+    setComposerExpanded(false);
+    setComposerMode(null);
+    restoreDraft();
+  }
+  loadNotes();
+  showToast("Note deleted", { icon: "fa-regular fa-trash-can" });
 }
 
 function emailNoteById(noteId) {
@@ -792,12 +1351,61 @@ function emailNoteById(noteId) {
     icon: "fa-regular fa-paper-plane",
     actions: [
       { label: "Open in Gmail", onClick: () => window.open(gmailUrl, "_blank", "noopener") },
-      {
-        label: "Copy text",
-        onClick: () => copyText(`To: ${NOTE_EMAIL_RECIPIENT}\nSubject: ${subject}\n\n${body}`),
-      },
+      { label: "Copy text", onClick: () => copyText(`To: ${NOTE_EMAIL_RECIPIENT}\nSubject: ${subject}\n\n${body}`) },
     ],
   });
+}
+
+// Copies the note with its formatting, so pasting into Outlook or Gmail keeps
+// bold, highlights and lists. Checklist boxes become ☐ / ☑ since email
+// clients don't draw them.
+function copyNoteById(noteId) {
+  const note = getNotes().find((n) => n.id === noteId);
+  if (!note) return;
+  const body = parseHtml(noteHtml(note));
+  body.querySelectorAll("ul.checklist").forEach((ul) => (ul.style.listStyle = "none"));
+  body.querySelectorAll("ul.checklist > li").forEach((li) => {
+    li.prepend(li.getAttribute("data-checked") === "true" ? "☑ " : "☐ ");
+  });
+  const html = `<p><strong>${escapeHtml(note.title)}</strong></p>${body.innerHTML}`;
+  const text = `${note.title}\n\n${note.content}`;
+  const done = () => showToast("Copied with formatting. Paste it into an email or doc.", { icon: "fa-regular fa-copy" });
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    navigator.clipboard
+      .write([
+        new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([text], { type: "text/plain" }),
+        }),
+      ])
+      .then(done)
+      .catch(() => copyHtmlFallback(html, text, done));
+  } else {
+    copyHtmlFallback(html, text, done);
+  }
+}
+
+function copyHtmlFallback(html, text, done) {
+  const holder = document.createElement("div");
+  holder.contentEditable = "true";
+  holder.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  const range = document.createRange();
+  range.selectNodeContents(holder);
+  getSelection().removeAllRanges();
+  getSelection().addRange(range);
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (e) {
+    copied = false;
+  }
+  getSelection().removeAllRanges();
+  holder.remove();
+  if (copied) done();
+  else copyText(text);
 }
 
 function copyText(text) {

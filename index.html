@@ -295,11 +295,14 @@
         <div class="page-head">
           <div><h1>Notes</h1><p>Saved in this browser. Use Data → Export backup to keep a copy.</p></div>
         </div>
-        <div class="split">
-          <details class="card composer" open>
+        <div class="notes-layout">
+          <details class="card composer" id="note-composer" open>
             <summary class="card-head">
-              <h2><i class="fa-solid fa-pen-to-square"></i> New note</h2>
-              <i class="fa-solid fa-chevron-down chev"></i>
+              <h2 id="composer-heading"><i class="fa-solid fa-pen-to-square"></i> New note</h2>
+              <span class="composer-tools">
+                <button type="button" class="btn btn-sm btn-ghost btn-icon" id="note-expand" title="Expand editor" aria-label="Expand editor"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
+                <i class="fa-solid fa-chevron-down chev"></i>
+              </span>
             </summary>
             <form id="note-form">
               <div class="card-body stack">
@@ -307,34 +310,78 @@
                   <label class="field"><span>Title</span><input class="input" type="text" id="note-title" placeholder="e.g. Weekly ops sync" required /></label>
                   <label class="field"><span>Date</span><input class="input" type="date" id="note-date" required /></label>
                 </div>
-                <div class="field">
-                  <span>Content</span>
+                <div class="field editor-field">
+                  <span id="note-editor-label">Content</span>
                   <div class="editor">
-                    <div class="editor-bar">
-                      <button type="button" class="btn btn-sm btn-ghost" id="note-bullet-btn"><i class="fa-solid fa-list-ul"></i> Bullet</button>
-                      <span class="editor-hint"><kbd>Tab</kbd> on a bullet adds a sub-bullet</span>
+                    <div class="toolbar" id="note-toolbar" role="toolbar" aria-label="Formatting">
+                      <button type="button" class="tb" data-cmd="heading" title="Section heading" aria-label="Section heading"><i class="fa-solid fa-heading"></i></button>
+                      <span class="tb-sep"></span>
+                      <button type="button" class="tb" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><i class="fa-solid fa-bold"></i></button>
+                      <button type="button" class="tb" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i class="fa-solid fa-italic"></i></button>
+                      <button type="button" class="tb" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline"><i class="fa-solid fa-underline"></i></button>
+                      <button type="button" class="tb" data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough"><i class="fa-solid fa-strikethrough"></i></button>
+                      <span class="tb-menu-anchor">
+                        <button type="button" class="tb" id="hl-btn" title="Highlight" aria-label="Highlight"><i class="fa-solid fa-highlighter"></i><span class="tb-swatch" id="hl-swatch"></span></button>
+                        <div class="hl-menu" id="hl-menu" hidden>
+                          <button type="button" data-hl="#fde68a" style="background: #fde68a" title="Yellow" aria-label="Yellow highlight"></button>
+                          <button type="button" data-hl="#bbf7d0" style="background: #bbf7d0" title="Green" aria-label="Green highlight"></button>
+                          <button type="button" data-hl="#bfdbfe" style="background: #bfdbfe" title="Blue" aria-label="Blue highlight"></button>
+                          <button type="button" data-hl="#fbcfe8" style="background: #fbcfe8" title="Pink" aria-label="Pink highlight"></button>
+                          <button type="button" data-hl="transparent" class="none" title="No highlight" aria-label="Remove highlight">✕</button>
+                        </div>
+                      </span>
+                      <span class="tb-sep"></span>
+                      <button type="button" class="tb" data-cmd="insertUnorderedList" title="Bullets (type - then space)" aria-label="Bullets"><i class="fa-solid fa-list-ul"></i></button>
+                      <button type="button" class="tb" data-cmd="insertOrderedList" title="Numbered list (type 1. then space)" aria-label="Numbered list"><i class="fa-solid fa-list-ol"></i></button>
+                      <button type="button" class="tb" data-cmd="checklist" title="Checklist (type [] then space)" aria-label="Checklist"><i class="fa-regular fa-square-check"></i></button>
+                      <button type="button" class="tb" data-cmd="outdent" title="Outdent (Shift+Tab)" aria-label="Outdent"><i class="fa-solid fa-outdent"></i></button>
+                      <button type="button" class="tb" data-cmd="indent" title="Indent / sub-bullet (Tab)" aria-label="Indent"><i class="fa-solid fa-indent"></i></button>
+                      <span class="tb-sep"></span>
+                      <button type="button" class="tb" data-cmd="link" title="Link (Ctrl+K)" aria-label="Link"><i class="fa-solid fa-link"></i></button>
+                      <button type="button" class="tb" data-cmd="divider" title="Divider line" aria-label="Divider line"><i class="fa-solid fa-minus"></i></button>
+                      <button type="button" class="tb" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting"><i class="fa-solid fa-eraser"></i></button>
                     </div>
-                    <textarea class="editor-text" id="note-content" rows="8" placeholder="Type your note… Use Bullet or start a line with • to make a list" required></textarea>
+                    <div class="editor-wrap">
+                      <div
+                        class="editor-rich rich"
+                        id="note-editor"
+                        contenteditable="true"
+                        role="textbox"
+                        aria-multiline="true"
+                        aria-labelledby="note-editor-label"
+                        data-placeholder="Type your note… Use the toolbar, or type “1.” or “-” and a space to start a list."
+                      ></div>
+                    </div>
                   </div>
+                  <p class="editor-hint">
+                    <kbd>Ctrl</kbd>+<kbd>B</kbd> bold · <kbd>Tab</kbd> sub-bullet · <kbd>Shift</kbd>+<kbd>Tab</kbd> back out ·
+                    start a line with <kbd>1.</kbd> <kbd>-</kbd> or <kbd>[]</kbd> and a space for numbers, bullets or a checklist
+                  </p>
                 </div>
               </div>
               <div class="card-foot">
+                <span class="draft-status" id="note-draft-status"></span>
                 <button type="button" class="btn btn-ghost" id="note-clear-btn">Clear</button>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save note</button>
+                <button type="submit" class="btn btn-primary" id="note-save-btn"><i class="fa-solid fa-check"></i> Save note</button>
               </div>
             </form>
           </details>
+          <div class="focus-backdrop" id="note-focus-backdrop" hidden></div>
 
           <section>
             <div class="list-toolbar">
               <h2>All notes <span class="count" id="notes-count">0</span></h2>
               <div class="list-tools">
-                <label class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="note-search" placeholder="Search notes" aria-label="Search notes" /></label>
-                <button type="button" class="btn btn-icon" id="notes-refresh-btn" title="Refresh notes" aria-label="Refresh notes"><i class="fa-solid fa-rotate-right"></i></button>
+                <label class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="note-search" placeholder="Search titles and note text" aria-label="Search notes" /></label>
+                <select class="mini-select" id="note-sort" aria-label="Sort notes">
+                  <option value="new">Newest</option>
+                  <option value="old">Oldest</option>
+                  <option value="az">A–Z</option>
+                </select>
               </div>
             </div>
+            <div id="notes-search-summary"></div>
             <div class="stack" id="notes-list"></div>
-            <p class="links-empty" id="notes-no-match" hidden>No notes match that search.</p>
           </section>
         </div>
       </section>
