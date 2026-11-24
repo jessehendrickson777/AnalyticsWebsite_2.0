@@ -831,9 +831,9 @@ function loadNotes() {
   const notes = orderNotes(matches, notesUi.sort);
 
   summary.innerHTML = query
-    ? `<div class="search-summary"><i class="fa-solid fa-magnifying-glass"></i><span><strong>${notes.length}</strong> note${
-        notes.length === 1 ? "" : "s"
-      } contain “${escapeHtml(query)}”</span><button type="button" data-clear-search>Clear search</button></div>`
+    ? `<div class="search-summary"><i class="fa-solid fa-magnifying-glass"></i><span><strong>${notes.length}</strong> ${
+        notes.length === 1 ? "note contains" : "notes contain"
+      } “${escapeHtml(query)}”</span><button type="button" data-clear-search>Clear search</button></div>`
     : "";
 
   if (!all.length) {
