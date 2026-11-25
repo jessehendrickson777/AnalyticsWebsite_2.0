@@ -45,6 +45,7 @@
   /* Where sticky form panels sit, and how much chrome sits above an
      embedded dashboard. Both change with the header height below. */
   --sticky-top: 92px;
+  --header-h: 71px; /* height of the sticky header, for scroll stops */
   --embed-offset: 224px;
 }
 
@@ -56,6 +57,8 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  /* Anything scrolled into view stops below the sticky header, not under it */
+  scroll-padding-top: calc(var(--header-h) + 12px);
 }
 body {
   margin: 0;
@@ -898,6 +901,31 @@ kbd {
   position: sticky;
   top: var(--sticky-top);
 }
+/* The note panel stays in view while the list scrolls, so it must never be
+   taller than the window or Save ends up out of reach. The editor takes
+   whatever height is left; on very short windows the panel scrolls itself. */
+.notes-layout > .composer {
+  max-height: calc(100vh - var(--sticky-top) - 16px);
+  max-height: calc(100dvh - var(--sticky-top) - 16px);
+  overflow-y: auto;
+}
+.notes-layout > .composer .editor-rich {
+  min-height: clamp(160px, calc(100vh - var(--sticky-top) - 440px), 340px);
+  max-height: max(160px, calc(100vh - var(--sticky-top) - 440px));
+}
+/* Windows too short to fit the whole panel: don't pin it, let it scroll
+   with the page so Save is always reachable */
+@media (max-height: 759px) {
+  .notes-layout > .composer:not(.is-expanded) {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .notes-layout > .composer:not(.is-expanded) .editor-rich {
+    min-height: 260px;
+    max-height: 60vh;
+  }
+}
 .composer > summary {
   list-style: none;
 }
@@ -1082,6 +1110,7 @@ kbd {
 .notes-layout > .composer.is-expanded {
   position: fixed;
   inset: 24px;
+  max-height: none;
   z-index: 1700;
   display: flex;
   flex-direction: column;
@@ -1106,7 +1135,7 @@ kbd {
 /* A <details> doesn't pass flex layout through to its content, so the
    editor gets the leftover screen height directly (header, fields,
    toolbar and footer take about 430px) */
-.composer.is-expanded .editor-rich {
+.notes-layout > .composer.is-expanded .editor-rich {
   flex: 1;
   height: calc(100vh - 430px);
   height: calc(100dvh - 430px);
@@ -1206,15 +1235,16 @@ kbd {
   padding: 0 2px;
   border-radius: 3px;
 }
-.rich ul.checklist {
-  list-style: none;
-  padding-left: 2px;
-}
-.rich ul.checklist > li {
+/* Any list line can be a checkbox, so bullets and checkboxes mix in one
+   list. The box sits where the bullet would; display:block also keeps a
+   checkbox from taking a number in a numbered list. */
+.rich li[data-checked] {
+  display: block;
   position: relative;
+  margin-left: -22px;
   padding-left: 28px;
 }
-.rich ul.checklist > li::before {
+.rich li[data-checked]::before {
   content: "";
   position: absolute;
   left: 0;
@@ -1226,11 +1256,11 @@ kbd {
   background: #fff;
   cursor: pointer;
 }
-.rich ul.checklist > li[data-checked="true"] {
+.rich li[data-checked="true"] {
   color: var(--muted);
   text-decoration: line-through;
 }
-.rich ul.checklist > li[data-checked="true"]::before {
+.rich li[data-checked="true"]::before {
   border-color: var(--brand);
   background: var(--brand)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")
@@ -1837,6 +1867,7 @@ mark.hit {
 @media (max-width: 1180px) {
   :root {
     --sticky-top: 136px;
+    --header-h: 117px;
     --embed-offset: 270px;
   }
   .topbar-inner {
@@ -1873,6 +1904,11 @@ mark.hit {
   .notes-layout > .composer {
     position: static;
   }
+  /* Not pinned here, so the panel can be as tall as it needs */
+  .notes-layout > .composer:not(.is-expanded) {
+    max-height: none;
+    overflow-y: visible;
+  }
   .toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -1881,8 +1917,9 @@ mark.hit {
   .toolbar::-webkit-scrollbar {
     display: none;
   }
-  .editor-rich {
+  .notes-layout > .composer:not(.is-expanded) .editor-rich {
     min-height: 260px;
+    max-height: 62vh;
   }
   .composer > summary {
     cursor: pointer;
@@ -1906,6 +1943,7 @@ mark.hit {
 @media (max-width: 768px) {
   :root {
     --sticky-top: 0px;
+    --header-h: 59px;
     --embed-offset: 220px;
     --toast-bottom: calc(86px + env(safe-area-inset-bottom));
   }
@@ -2054,7 +2092,7 @@ mark.hit {
     inset: 0;
     border-radius: 0;
   }
-  .composer.is-expanded .editor-rich {
+  .notes-layout > .composer.is-expanded .editor-rich {
     height: calc(100vh - 420px);
     height: calc(100dvh - 420px);
   }

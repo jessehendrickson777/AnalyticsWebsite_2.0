@@ -586,7 +586,8 @@ function cleanRichNode(parent) {
 
     const href = tag === "A" ? (node.getAttribute("href") || "").trim() : "";
     const checked = node.getAttribute("data-checked");
-    const isChecklist = tag === "UL" && node.classList.contains("checklist");
+    // Older notes marked a whole list as a checklist; each item now carries its own box
+    const isOldChecklist = tag === "UL" && node.classList.contains("checklist");
     const highlightClass = [...node.classList].find((c) => /^hl-(yellow|green|blue|pink)$/.test(c));
     // Highlights can land on any inline tag (Chrome puts them on <b> when the text is bold)
     const background = INLINE_HIGHLIGHT_TAGS.has(tag) ? node.style.backgroundColor : "";
@@ -602,7 +603,12 @@ function cleanRichNode(parent) {
       node.setAttribute("target", "_blank");
       node.setAttribute("rel", "noopener");
     }
-    if (isChecklist) node.className = "checklist";
+    if (isOldChecklist) {
+      node.querySelectorAll(":scope > li").forEach((li) => {
+        if (!li.hasAttribute("data-checked")) li.setAttribute("data-checked", "false");
+      });
+    }
+    // data-checked on a list item makes that one line a checkbox
     if (tag === "LI" && checked !== null) node.setAttribute("data-checked", checked === "true" ? "true" : "false");
     if (highlightClass) node.className = highlightClass;
     if (background && background !== "transparent" && !/rgba\(0, 0, 0, 0\)/.test(background)) {
@@ -674,7 +680,7 @@ function richToPlainText(html) {
   }
 
   function listLines(list, depth, parentIsOrdered) {
-    const checklist = list.classList.contains("checklist");
+    const oldChecklist = list.classList.contains("checklist");
     let number = 0;
     list.childNodes.forEach((item) => {
       // Chrome can nest a list straight inside another list when indenting
@@ -683,11 +689,15 @@ function richToPlainText(html) {
         return;
       }
       if (item.nodeName !== "LI") return;
-      number++;
       let marker;
-      if (checklist) marker = item.getAttribute("data-checked") === "true" ? "☑ " : "☐ ";
-      else if (list.nodeName === "OL") marker = depth > 0 && parentIsOrdered ? `${String.fromCharCode(96 + ((number - 1) % 26) + 1)}. ` : `${number}. `;
-      else marker = ["• ", "○ ", "▪ "][Math.min(depth, 2)];
+      if (oldChecklist || item.hasAttribute("data-checked")) {
+        // Checkbox lines don't take a number, matching how they're drawn
+        marker = item.getAttribute("data-checked") === "true" ? "☑ " : "☐ ";
+      } else {
+        number++;
+        if (list.nodeName === "OL") marker = depth > 0 && parentIsOrdered ? `${String.fromCharCode(96 + ((number - 1) % 26) + 1)}. ` : `${number}. `;
+        else marker = ["• ", "○ ", "▪ "][Math.min(depth, 2)];
+      }
       lines.push("  ".repeat(depth) + marker + squash(inlineText(item)));
       item.childNodes.forEach((child) => {
         if (child.nodeName === "UL" || child.nodeName === "OL") listLines(child, depth + 1, list.nodeName === "OL");
@@ -757,7 +767,7 @@ const notesUi = {
 };
 
 function checklistProgress(html) {
-  const items = parseHtml(html).querySelectorAll("ul.checklist > li");
+  const items = parseHtml(html).querySelectorAll("li[data-checked]");
   if (!items.length) return "";
   const done = [...items].filter((li) => li.getAttribute("data-checked") === "true").length;
   return `<span class="progress"><span class="progress-bar"><span style="width:${Math.round((done / items.length) * 100)}%"></span></span>${done} of ${items.length} done</span>`;
@@ -873,9 +883,9 @@ function toggleChecklistItem(card, item) {
   const noteId = Number(card.dataset.id);
   const note = getNotes().find((n) => n.id === noteId);
   if (!note) return;
-  const index = [...card.querySelectorAll(".note-body ul.checklist > li")].indexOf(item);
+  const index = [...card.querySelectorAll(".note-body li[data-checked]")].indexOf(item);
   const body = parseHtml(noteHtml(note));
-  const stored = body.querySelectorAll("ul.checklist > li")[index];
+  const stored = body.querySelectorAll("li[data-checked]")[index];
   if (!stored) return;
   stored.setAttribute("data-checked", stored.getAttribute("data-checked") === "true" ? "false" : "true");
   const html = sanitizeRichHtml(body.innerHTML);
@@ -883,10 +893,10 @@ function toggleChecklistItem(card, item) {
   loadNotes();
 }
 
-// Clicks in the 24px box to the left of a checklist item
+// Clicks in the 24px box to the left of a checkbox line
 function clickedCheckbox(e) {
-  const item = e.target.closest("ul.checklist > li");
-  if (!item) return null;
+  const item = e.target.closest("li");
+  if (!item || !item.hasAttribute("data-checked")) return null;
   return e.clientX - item.getBoundingClientRect().left <= 24 ? item : null;
 }
 
@@ -908,22 +918,56 @@ function currentEditorBlock() {
   return node.closest("li, p, h3, div");
 }
 
-function toggleChecklist() {
-  const block = currentEditorBlock();
-  const list = block && block.closest("ul, ol");
-  if (list && list.classList.contains("checklist")) {
-    document.execCommand("insertUnorderedList"); // turns the checklist back into text
+// The list items the selection covers, or the one holding the caret.
+// A parent item only counts if its own text is selected, not just a sub-item.
+function selectedListItems() {
+  const selection = getSelection();
+  if (!selection.rangeCount) return [];
+  const range = selection.getRangeAt(0);
+  const editor = noteEditor();
+  if (!editor.contains(range.commonAncestorContainer)) return [];
+  if (range.collapsed) {
+    const block = currentEditorBlock();
+    const item = block && block.closest("li");
+    return item ? [item] : [];
+  }
+  return [...editor.querySelectorAll("li")].filter((li) => {
+    // A drag that ends at the very start of the next line doesn't include it
+    if (range.endOffset === 0 && li.contains(range.endContainer) && !li.contains(range.startContainer)) return false;
+    const own = [...li.childNodes].filter((n) => n.nodeName !== "UL" && n.nodeName !== "OL");
+    return own.length ? own.some((n) => range.intersectsNode(n)) : range.intersectsNode(li);
+  });
+}
+
+// Checkboxes are set per line, so one list can mix bullets and checkboxes.
+// Toggles the selected lines: all checkboxes -> bullets, otherwise -> checkboxes.
+function toggleCheckboxes() {
+  let items = selectedListItems();
+  if (!items.length) {
+    // Plain lines: make them a list first, then give each line a box
+    document.execCommand("insertUnorderedList");
+    items = selectedListItems();
+    items.forEach((li) => li.setAttribute("data-checked", "false"));
     return;
   }
-  if (!list || list.tagName !== "UL") document.execCommand("insertUnorderedList");
-  const after = currentEditorBlock();
-  const ul = after && after.closest("ul");
-  if (ul) {
-    ul.classList.add("checklist");
-    ul.querySelectorAll(":scope > li").forEach((li) => {
-      if (!li.hasAttribute("data-checked")) li.setAttribute("data-checked", "false");
-    });
+  const allBoxes = items.every((li) => li.hasAttribute("data-checked"));
+  items.forEach((li) => {
+    if (allBoxes) li.removeAttribute("data-checked");
+    else if (!li.hasAttribute("data-checked")) li.setAttribute("data-checked", "false");
+  });
+}
+
+// Bullets / numbers. Selected checkbox lines turn back into plain bullets or
+// numbers and stay in their list instead of the list being removed.
+function setListType(command) {
+  const items = selectedListItems();
+  const boxes = items.filter((li) => li.hasAttribute("data-checked"));
+  if (boxes.length) {
+    boxes.forEach((li) => li.removeAttribute("data-checked"));
+    const wanted = command === "insertUnorderedList" ? "UL" : "OL";
+    if (items.every((li) => li.parentElement.nodeName === wanted)) return;
   }
+  document.execCommand(command);
 }
 
 function runEditorCommand(command) {
@@ -932,7 +976,9 @@ function runEditorCommand(command) {
     const block = currentEditorBlock();
     document.execCommand("formatBlock", false, block && block.tagName === "H3" ? "<p>" : "<h3>");
   } else if (command === "checklist") {
-    toggleChecklist();
+    toggleCheckboxes();
+  } else if (command === "insertUnorderedList" || command === "insertOrderedList") {
+    setListType(command);
   } else if (command === "link") {
     let url = prompt("Link address", "https://");
     if (url && url.trim() && url.trim() !== "https://") {
@@ -953,7 +999,8 @@ const TOOLBAR_STATE_COMMANDS = ["bold", "italic", "underline", "strikeThrough", 
 function refreshEditorToolbar() {
   const toolbar = document.getElementById("note-toolbar");
   const block = currentEditorBlock();
-  const inChecklist = Boolean(block && block.closest("ul.checklist"));
+  const item = block && block.closest("li");
+  const onCheckbox = Boolean(item && item.hasAttribute("data-checked"));
   TOOLBAR_STATE_COMMANDS.forEach((command) => {
     let on = false;
     try {
@@ -961,11 +1008,11 @@ function refreshEditorToolbar() {
     } catch (err) {
       /* not supported */
     }
-    if (command === "insertUnorderedList" && inChecklist) on = false;
+    if ((command === "insertUnorderedList" || command === "insertOrderedList") && onCheckbox) on = false;
     toolbar.querySelector(`[data-cmd="${command}"]`).classList.toggle("is-on", on);
   });
   toolbar.querySelector('[data-cmd="heading"]').classList.toggle("is-on", Boolean(block && block.tagName === "H3"));
-  toolbar.querySelector('[data-cmd="checklist"]').classList.toggle("is-on", inChecklist);
+  toolbar.querySelector('[data-cmd="checklist"]').classList.toggle("is-on", onCheckbox);
 }
 
 let draftTimer = null;
@@ -1068,9 +1115,16 @@ function editNoteById(noteId) {
 
   const composer = document.getElementById("note-composer");
   composer.open = true;
-  // Phones get the full-screen editor; on desktop the composer is already in view
-  if (window.matchMedia("(max-width: 960px)").matches) setComposerExpanded(true);
-  else composer.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  // Phones get the full-screen editor. On desktop the pinned composer is
+  // usually in view already; in short windows it isn't pinned, so scroll back
+  // up to it when its top (the title) is out of sight.
+  if (window.matchMedia("(max-width: 960px)").matches) {
+    setComposerExpanded(true);
+  } else {
+    const top = composer.getBoundingClientRect().top;
+    const headerBottom = document.querySelector(".topbar").getBoundingClientRect().bottom;
+    if (top < headerBottom || top > window.innerHeight - 120) composer.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
   document.getElementById("note-title").focus({ preventScroll: true });
 }
 
@@ -1177,12 +1231,33 @@ function setupNoteEditor() {
       runEditorCommand("link");
       return;
     }
-    // A new checklist item starts unticked
-    if (e.key === "Enter" && block && block.matches("ul.checklist > li")) {
+    // Enter on a checkbox line starts another (unticked) checkbox line
+    if (e.key === "Enter" && block && block.matches("li[data-checked]")) {
+      const before = block;
       setTimeout(() => {
-        const item = currentEditorBlock();
-        if (item && item.matches("ul.checklist > li")) item.setAttribute("data-checked", "false");
+        const now = currentEditorBlock();
+        const item = now && now.closest("li");
+        if (!item) return; // Enter on an empty line left the list
+        // Enter at the very start of a line adds the new line above it
+        const fresh = item === before ? item.previousElementSibling : item;
+        if (fresh && fresh.nodeName === "LI") fresh.setAttribute("data-checked", "false");
       }, 0);
+    }
+    // "[]" and a space at the start of a bullet turns just that line into a checkbox
+    if (e.key === " " && block && block.matches("li") && !block.hasAttribute("data-checked")) {
+      const first = block.firstChild;
+      const own = [...block.childNodes].filter((n) => n.nodeName !== "UL" && n.nodeName !== "OL");
+      if (first && first.nodeType === Node.TEXT_NODE && own.length === 1 && first.nodeValue.trim() === "[]") {
+        e.preventDefault();
+        const range = document.createRange();
+        range.selectNodeContents(first);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+        document.execCommand("delete");
+        block.setAttribute("data-checked", "false");
+        onEditorChange();
+        return;
+      }
     }
     // Start a line with "1.", "-", "*" or "[]" and a space to begin a list
     if (e.key === " " && block && !block.closest("li")) {
@@ -1363,8 +1438,8 @@ function copyNoteById(noteId) {
   const note = getNotes().find((n) => n.id === noteId);
   if (!note) return;
   const body = parseHtml(noteHtml(note));
-  body.querySelectorAll("ul.checklist").forEach((ul) => (ul.style.listStyle = "none"));
-  body.querySelectorAll("ul.checklist > li").forEach((li) => {
+  body.querySelectorAll("li[data-checked]").forEach((li) => {
+    li.style.listStyle = "none";
     li.prepend(li.getAttribute("data-checked") === "true" ? "☑ " : "☐ ");
   });
   const html = `<p><strong>${escapeHtml(note.title)}</strong></p>${body.innerHTML}`;
