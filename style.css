@@ -155,8 +155,9 @@ kbd {
 .brand {
   flex-shrink: 0;
 }
+/* Sized to fill the 70px header without making it taller */
 .brand img {
-  height: 30px;
+  height: 44px;
   width: auto;
 }
 
@@ -1876,6 +1877,10 @@ mark.hit {
     padding-top: 12px;
     row-gap: 10px;
   }
+  /* Matches the Data button beside it, so the top row doesn't grow */
+  .brand img {
+    height: 38px;
+  }
   .menu-anchor {
     margin-left: auto;
   }
@@ -1959,7 +1964,7 @@ mark.hit {
     flex-wrap: nowrap;
   }
   .brand img {
-    height: 24px;
+    height: 36px;
   }
   .pills,
   .menu-anchor {
