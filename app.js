@@ -764,6 +764,9 @@ function noteHasText(html) {
 const notesUi = {
   query: "",
   sort: localStorage.getItem(NOTE_SORT_KEY) || "new",
+  // Long notes opened with "Show more" stay open through redraws (ticking a
+  // box, pinning, saving) until "Show less" is clicked
+  expanded: new Set(),
 };
 
 function checklistProgress(html) {
@@ -863,9 +866,13 @@ function loadNotes() {
       highlightMatches(card.querySelector(".note-title"), query);
       highlightMatches(body, query);
     } else if (body.scrollHeight > 400) {
-      // Long notes start collapsed (search results always show in full)
-      body.classList.add("is-clamped");
-      body.insertAdjacentHTML("afterend", '<button type="button" class="show-more" data-note-action="more">Show more</button>');
+      // Long notes start collapsed unless already opened (search results always show in full)
+      const open = notesUi.expanded.has(Number(card.dataset.id));
+      if (!open) body.classList.add("is-clamped");
+      body.insertAdjacentHTML(
+        "afterend",
+        `<button type="button" class="show-more" data-note-action="more">${open ? "Show less" : "Show more"}</button>`
+      );
     }
   });
 }
@@ -1378,6 +1385,8 @@ function setupNotes() {
       const body = card.querySelector(".note-body");
       const collapsed = body.classList.toggle("is-clamped");
       button.textContent = collapsed ? "Show more" : "Show less";
+      if (collapsed) notesUi.expanded.delete(id);
+      else notesUi.expanded.add(id);
     }
   });
 
