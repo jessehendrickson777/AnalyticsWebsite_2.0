@@ -441,15 +441,19 @@ function noteTaskGroups() {
 function renderHomeTasks() {
   const list = document.getElementById("home-tasks");
   const progress = document.getElementById("home-tasks-progress");
-  const groups = noteTaskGroups();
+  const allGroups = noteTaskGroups();
+  // A note leaves the list once every one of its tasks is done; until then
+  // all of its tasks show, ticked or not. The progress bar counts what's shown.
+  const groups = allGroups.filter((g) => g.done < g.tasks.length);
   const total = groups.reduce((n, g) => n + g.tasks.length, 0);
   const done = groups.reduce((n, g) => n + g.done, 0);
   document.getElementById("home-tasks-count").textContent = total - done;
 
-  if (!total) {
+  if (!groups.length) {
     progress.hidden = true;
-    list.innerHTML =
-      '<p class="mini-empty">No tasks yet. Checkbox lines in your notes show up here. <a href="#notes" data-focus="note-title">Write a note</a></p>';
+    list.innerHTML = allGroups.length
+      ? '<p class="mini-empty"><i class="fa-solid fa-circle-check tasks-done-icon"></i>All caught up. Every task in your notes is done.</p>'
+      : '<p class="mini-empty">No tasks yet. Checkbox lines in your notes show up here. <a href="#notes" data-focus="note-title">Write a note</a></p>';
     return;
   }
 
@@ -487,6 +491,8 @@ function renderHomeTasks() {
 
 // Set by a note title in the Tasks list: the note to scroll to on the Notes tab
 let pendingNoteId = null;
+// Pending redraw after a note's last task is ticked
+let completeTimer = null;
 
 function setupHomeTasks() {
   const list = document.getElementById("home-tasks");
@@ -494,8 +500,22 @@ function setupHomeTasks() {
   list.addEventListener("change", (e) => {
     const box = e.target.closest("input[data-task-index]");
     if (!box) return;
-    const noteId = Number(box.closest("[data-note-id]").dataset.noteId);
+    const group = box.closest("[data-note-id]");
+    const noteId = Number(group.dataset.noteId);
     setNoteTask(noteId, Number(box.dataset.taskIndex), box.checked);
+
+    // Ticking a note's last open task: show it as done for a moment, then let it leave
+    const boxes = [...group.querySelectorAll("input[data-task-index]")];
+    if (boxes.every((b) => b.checked)) {
+      box.closest(".task").classList.add("is-done");
+      group.querySelector(".task-group-count").textContent = `${boxes.length}/${boxes.length}`;
+      group.classList.add("is-complete");
+      const title = group.querySelector("[data-open-note]").textContent.trim();
+      showToast(`All tasks done in “${title}”`, { icon: "fa-solid fa-circle-check" });
+      clearTimeout(completeTimer);
+      completeTimer = setTimeout(renderHomeTasks, 1000);
+      return;
+    }
     renderHomeTasks();
   });
   list.addEventListener("click", (e) => {

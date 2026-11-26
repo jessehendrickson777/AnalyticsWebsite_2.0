@@ -843,6 +843,32 @@ kbd {
 .task-group + .task-group {
   border-top: 1px solid var(--line-soft);
 }
+/* A note whose last task was just ticked: shown as done for a moment, then removed */
+.task-group.is-complete {
+  background: var(--success-soft);
+  animation: tasks-complete 1s ease-in forwards;
+}
+.task-group.is-complete .task-group-head {
+  background: var(--success-soft);
+}
+.task-group.is-complete .task-group-count::after {
+  content: " · All done";
+  font-weight: 600;
+  color: var(--success);
+}
+@keyframes tasks-complete {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}
+.tasks-done-icon {
+  margin-right: 8px;
+  color: var(--success);
+}
 /* The note title stays at the top of the list while its tasks scroll past */
 .task-group-head {
   position: sticky;
