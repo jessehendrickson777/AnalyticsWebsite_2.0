@@ -200,6 +200,17 @@ function showView(view) {
       field.focus();
     }
   }
+
+  // Arrived from a note title in the Tasks list: scroll to that note and flash it
+  if (view === "notes" && pendingNoteId !== null) {
+    const card = document.querySelector(`#notes-list .note[data-id="${pendingNoteId}"]`);
+    pendingNoteId = null;
+    if (card) {
+      card.scrollIntoView({ block: "start" });
+      card.classList.add("is-flash");
+      setTimeout(() => card.classList.remove("is-flash"), 1600);
+    }
+  }
 }
 
 // On tablets the tab strip scrolls sideways; keep the current tab in view
@@ -330,8 +341,8 @@ function setupQuickLinks() {
 
 function renderHome() {
   renderFiscalHero();
+  renderHomeTasks();
   renderHomeProjects();
-  renderHomeNotes();
 }
 
 function greetingForNow() {
@@ -404,25 +415,98 @@ function renderHomeProjects() {
   list.innerHTML = rows.join("");
 }
 
-function renderHomeNotes() {
-  const list = document.getElementById("home-notes");
-  const notes = sortNotes(getNotes()).slice(0, 3);
+/* ---------- Tasks: the checkbox lines in every note ---------- */
 
-  if (!notes.length) {
-    list.innerHTML = '<p class="mini-empty">No notes yet. <a href="#notes" data-focus="note-title">Write one</a></p>';
+// Notes that have checkbox lines, pinned first then newest. Each task keeps
+// its position among the note's checkbox lines, which is how it's ticked.
+function noteTaskGroups() {
+  const groups = [];
+  orderNotes(getNotes(), "new").forEach((note) => {
+    const body = parseHtml(noteHtml(note));
+    const tasks = [];
+    body.querySelectorAll("li[data-checked]").forEach((li, index) => {
+      // The line's own text and formatting, without any sub-list under it
+      const own = li.cloneNode(true);
+      own.querySelectorAll("ul, ol").forEach((list) => list.remove());
+      if (!own.textContent.trim()) return; // an empty checkbox line isn't a task yet
+      let depth = 0;
+      for (let p = li.parentElement; p && p !== body; p = p.parentElement) if (p.nodeName === "LI") depth++;
+      tasks.push({ index, done: li.getAttribute("data-checked") === "true", html: own.innerHTML.trim(), depth });
+    });
+    if (tasks.length) groups.push({ note, tasks, done: tasks.filter((t) => t.done).length });
+  });
+  return groups;
+}
+
+function renderHomeTasks() {
+  const list = document.getElementById("home-tasks");
+  const progress = document.getElementById("home-tasks-progress");
+  const groups = noteTaskGroups();
+  const total = groups.reduce((n, g) => n + g.tasks.length, 0);
+  const done = groups.reduce((n, g) => n + g.done, 0);
+  document.getElementById("home-tasks-count").textContent = total - done;
+
+  if (!total) {
+    progress.hidden = true;
+    list.innerHTML =
+      '<p class="mini-empty">No tasks yet. Checkbox lines in your notes show up here. <a href="#notes" data-focus="note-title">Write a note</a></p>';
     return;
   }
 
-  list.innerHTML = notes
-    .map((note) => {
-      const firstLine = (note.content.split("\n").find((l) => l.trim()) || "").replace(/^\s*([•○▪☐☑]|\d+\.|[a-z]\.)\s/, "");
-      return `
-      <a class="mini-row" href="#notes">
-        <span class="mini-main"><strong>${escapeHtml(note.title || "Untitled note")}</strong><span>${escapeHtml(firstLine)}</span></span>
-        <span class="mini-date">${formatMonthDay(note.date)}</span>
-      </a>`;
-    })
+  const percent = Math.round((done / total) * 100);
+  progress.hidden = false;
+  progress.innerHTML = `
+    <div class="tasks-progress-text"><span><strong>${done}</strong> of ${total} done</span><span>${percent}%</span></div>
+    <div class="tasks-progress-bar" role="progressbar" aria-label="Tasks done" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${done}"><span style="width:${percent}%"></span></div>`;
+
+  // Redrawing would jump the list back to the top; keep the reader's place
+  const scrollTop = list.scrollTop;
+  list.innerHTML = groups
+    .map(
+      (g) => `
+      <section class="task-group" data-note-id="${g.note.id}">
+        <header class="task-group-head">
+          <a href="#notes" data-open-note="${g.note.id}" title="Open this note">${g.note.pinned ? '<i class="fa-solid fa-thumbtack"></i>' : ""}${escapeHtml(g.note.title || "Untitled note")}</a>
+          <span class="task-group-count">${g.done}/${g.tasks.length}</span>
+        </header>
+        <ul class="task-list">
+          ${g.tasks
+            .map(
+              (t) => `
+            <li class="task${t.done ? " is-done" : ""}"${t.depth ? ` style="--depth:${t.depth}"` : ""}>
+              <label><input type="checkbox" data-task-index="${t.index}"${t.done ? " checked" : ""} /><span class="task-text rich">${t.html}</span></label>
+            </li>`
+            )
+            .join("")}
+        </ul>
+      </section>`
+    )
     .join("");
+  list.scrollTop = scrollTop;
+}
+
+// Set by a note title in the Tasks list: the note to scroll to on the Notes tab
+let pendingNoteId = null;
+
+function setupHomeTasks() {
+  const list = document.getElementById("home-tasks");
+  // Ticking a task on Home updates the note it came from
+  list.addEventListener("change", (e) => {
+    const box = e.target.closest("input[data-task-index]");
+    if (!box) return;
+    const noteId = Number(box.closest("[data-note-id]").dataset.noteId);
+    setNoteTask(noteId, Number(box.dataset.taskIndex), box.checked);
+    renderHomeTasks();
+  });
+  list.addEventListener("click", (e) => {
+    const link = e.target.closest("[data-open-note]");
+    if (!link) return;
+    pendingNoteId = Number(link.dataset.openNote);
+    // Show the note in full, and make sure a search on the Notes tab doesn't hide it
+    notesUi.expanded.add(pendingNoteId);
+    notesUi.query = "";
+    document.getElementById("note-search").value = "";
+  });
 }
 
 /* ============================================
@@ -886,17 +970,31 @@ function updateNote(noteId, changes) {
   return notes[index];
 }
 
-function toggleChecklistItem(card, item) {
-  const noteId = Number(card.dataset.id);
+// Ticks or unticks checkbox line number `index` (in document order) of a note.
+// Used by note cards and by the Tasks list on Home.
+function setNoteTask(noteId, index, checked) {
   const note = getNotes().find((n) => n.id === noteId);
-  if (!note) return;
-  const index = [...card.querySelectorAll(".note-body li[data-checked]")].indexOf(item);
+  if (!note) return false;
   const body = parseHtml(noteHtml(note));
   const stored = body.querySelectorAll("li[data-checked]")[index];
-  if (!stored) return;
-  stored.setAttribute("data-checked", stored.getAttribute("data-checked") === "true" ? "false" : "true");
+  if (!stored) return false;
+  stored.setAttribute("data-checked", checked ? "true" : "false");
   const html = sanitizeRichHtml(body.innerHTML);
   updateNote(noteId, { html, content: richToPlainText(html) });
+
+  // If this note is open in the editor, tick it there too so saving the edit doesn't undo it
+  if (noteComposer.editingId === noteId) {
+    const inEditor = noteEditor().querySelectorAll("li[data-checked]")[index];
+    if (inEditor && inEditor.textContent.trim() === stored.textContent.trim()) {
+      inEditor.setAttribute("data-checked", checked ? "true" : "false");
+    }
+  }
+  return true;
+}
+
+function toggleChecklistItem(card, item) {
+  const index = [...card.querySelectorAll(".note-body li[data-checked]")].indexOf(item);
+  setNoteTask(Number(card.dataset.id), index, item.getAttribute("data-checked") !== "true");
   loadNotes();
 }
 
@@ -2638,6 +2736,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMenus();
   setupEmbeds();
   setupQuickLinks();
+  setupHomeTasks();
   setupNotes();
   setupProjects();
   setupBackup();
@@ -2647,6 +2746,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("hashchange", () => {
   setMoreSheet(false);
-  showView(viewFromHash());
+  // Scroll to the top first, so a view can still scroll to something itself
   window.scrollTo(0, 0);
+  showView(viewFromHash());
 });

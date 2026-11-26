@@ -200,14 +200,14 @@
           </section>
 
           <aside class="stack">
-            <section class="card">
-              <header class="card-head"><h2>Quick actions</h2></header>
-              <div class="qa-grid">
-                <a class="qa" href="#notes" data-focus="note-title"><span class="link-ico"><i class="fa-solid fa-pen-to-square"></i></span>New note</a>
-                <a class="qa" href="#projects" data-focus="project-name"><span class="link-ico"><i class="fa-solid fa-plus"></i></span>Add project</a>
-                <button type="button" class="qa" data-action="export"><span class="link-ico"><i class="fa-solid fa-file-export"></i></span>Export backup</button>
-                <button type="button" class="qa" data-action="import"><span class="link-ico"><i class="fa-solid fa-file-import"></i></span>Import backup</button>
-              </div>
+            <!-- Every checkbox line in every note, grouped by note -->
+            <section class="card tasks-card">
+              <header class="card-head">
+                <h2><i class="fa-regular fa-square-check"></i> Tasks <span class="count" id="home-tasks-count" title="Open tasks">0</span></h2>
+                <a class="link-more" href="#notes">Open notes</a>
+              </header>
+              <div class="tasks-progress" id="home-tasks-progress" hidden></div>
+              <div class="tasks-list" id="home-tasks"></div>
             </section>
             <section class="card">
               <header class="card-head">
@@ -215,13 +215,6 @@
                 <a class="link-more" href="#projects">View all</a>
               </header>
               <div class="mini-list" id="home-projects"></div>
-            </section>
-            <section class="card">
-              <header class="card-head">
-                <h2>Recent notes</h2>
-                <a class="link-more" href="#notes">View all</a>
-              </header>
-              <div class="mini-list" id="home-notes"></div>
             </section>
           </aside>
         </div>
