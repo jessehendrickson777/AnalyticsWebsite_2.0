@@ -2,13 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#ffffff" />
     <title>Operations Analytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -20,26 +29,55 @@
         </a>
 
         <nav class="pills" aria-label="Sections">
-          <a class="pill-nav" href="#home" data-nav="home"><i class="fa-solid fa-house"></i>Home</a>
-          <a class="pill-nav" href="#notes" data-nav="notes"><i class="fa-solid fa-note-sticky"></i>Notes</a>
-          <a class="pill-nav" href="#projects" data-nav="projects"><i class="fa-solid fa-list-check"></i>Projects</a>
-          <a class="pill-nav" href="#fiscal" data-nav="fiscal"><i class="fa-solid fa-calendar-days"></i>Fiscal Calendar</a>
-          <a class="pill-nav" href="#reports" data-nav="reports"><i class="fa-solid fa-chart-column"></i>Reports</a>
-          <a class="pill-nav" href="#funnel" data-nav="funnel"><i class="fa-solid fa-filter"></i>Analytics Funnel</a>
+          <a class="pill-nav" href="#home" data-nav="home"
+            ><i class="fa-solid fa-house"></i>Home</a
+          >
+          <a class="pill-nav" href="#notes" data-nav="notes"
+            ><i class="fa-solid fa-note-sticky"></i>Notes</a
+          >
+          <a class="pill-nav" href="#projects" data-nav="projects"
+            ><i class="fa-solid fa-list-check"></i>Projects</a
+          >
+          <a class="pill-nav" href="#fiscal" data-nav="fiscal"
+            ><i class="fa-solid fa-calendar-days"></i>Fiscal Calendar</a
+          >
+          <a class="pill-nav" href="#reports" data-nav="reports"
+            ><i class="fa-solid fa-chart-column"></i>Reports</a
+          >
+          <a class="pill-nav" href="#funnel" data-nav="funnel"
+            ><i class="fa-solid fa-filter"></i>Analytics Funnel</a
+          >
         </nav>
 
         <div class="menu-anchor">
-          <button type="button" class="btn" id="data-toggle" aria-expanded="false" aria-controls="data-menu">
-            <i class="fa-solid fa-database"></i><span>Data</span><i class="fa-solid fa-chevron-down caret"></i>
+          <button
+            type="button"
+            class="btn"
+            id="data-toggle"
+            aria-expanded="false"
+            aria-controls="data-menu"
+          >
+            <i class="fa-solid fa-database"></i><span>Data</span
+            ><i class="fa-solid fa-chevron-down caret"></i>
           </button>
           <div class="card dropdown" id="data-menu" hidden>
             <button type="button" class="dd-item" data-action="export">
-              <span class="link-ico"><i class="fa-solid fa-file-export"></i></span>
-              <span><strong>Export backup</strong><small>Notes + projects as .json</small></span>
+              <span class="link-ico"
+                ><i class="fa-solid fa-file-export"></i
+              ></span>
+              <span
+                ><strong>Export backup</strong
+                ><small>Notes + projects as .json</small></span
+              >
             </button>
             <button type="button" class="dd-item" data-action="import">
-              <span class="link-ico"><i class="fa-solid fa-file-import"></i></span>
-              <span><strong>Import backup</strong><small>Merge or replace from a file</small></span>
+              <span class="link-ico"
+                ><i class="fa-solid fa-file-import"></i
+              ></span>
+              <span
+                ><strong>Import backup</strong
+                ><small>Merge or replace from a file</small></span
+              >
             </button>
           </div>
         </div>
@@ -57,15 +95,34 @@
               <h2><i class="fa-solid fa-grip"></i> Quick links</h2>
               <label class="search home-search">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="search" id="link-search" placeholder="Search links" aria-label="Search links" />
+                <input
+                  type="search"
+                  id="link-search"
+                  placeholder="Search links"
+                  aria-label="Search links"
+                />
               </label>
             </header>
             <div class="chip-row home-chips">
-              <button type="button" class="chip is-active" data-link-filter="all">All</button>
-              <button type="button" class="chip" data-link-filter="bi">Analytics &amp; BI</button>
-              <button type="button" class="chip" data-link-filter="ops">Operations</button>
-              <button type="button" class="chip" data-link-filter="company">Company</button>
-              <button type="button" class="chip" data-link-filter="drive">Drive &amp; Sheets</button>
+              <button
+                type="button"
+                class="chip is-active"
+                data-link-filter="all"
+              >
+                All
+              </button>
+              <button type="button" class="chip" data-link-filter="bi">
+                Analytics &amp; BI
+              </button>
+              <button type="button" class="chip" data-link-filter="ops">
+                Operations
+              </button>
+              <button type="button" class="chip" data-link-filter="company">
+                Company
+              </button>
+              <button type="button" class="chip" data-link-filter="drive">
+                Drive &amp; Sheets
+              </button>
             </div>
 
             <!-- To add a link: copy any <a class="link-tile"> into the right group
@@ -74,29 +131,89 @@
               <section class="link-group" data-group="bi">
                 <h3 class="link-group-title">Analytics &amp; BI</h3>
                 <div class="tile-grid">
-                  <a class="link-tile" href="https://goodwillindy.domo.com/" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-chart-pie"></i></span>
-                    <span class="tile-text"><strong>DOMO</strong><span>goodwillindy.domo.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://goodwillindy.domo.com/"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-chart-pie"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>DOMO</strong
+                      ><span>goodwillindy.domo.com</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://app.powerbi.com/home?experience=power-bi" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-chart-column"></i></span>
-                    <span class="tile-text"><strong>Power BI</strong><span>app.powerbi.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://app.powerbi.com/home?experience=power-bi"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-chart-column"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Power BI</strong
+                      ><span>app.powerbi.com</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://app.fabric.microsoft.com/groups/a018d2d5-25bd-4d1e-bad0-59ec43dd4d08/list?experience=fabric-developer&amp;selectedWorkspaceObjectId=me" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-layer-group"></i></span>
-                    <span class="tile-text"><strong>Fabric</strong><span>app.fabric.microsoft.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://app.fabric.microsoft.com/groups/a018d2d5-25bd-4d1e-bad0-59ec43dd4d08/list?experience=fabric-developer&amp;selectedWorkspaceObjectId=me"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-layer-group"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Fabric</strong
+                      ><span>app.fabric.microsoft.com</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="http://www.google.com/url?q=http%3A%2F%2Fsrcorpssrs%2Freports%2Fbrowse%2FReports%2FRetail%2FData%2520Validated&amp;sa=D&amp;sntz=1&amp;usg=AOvVaw3YI8SBIzNk5mIphIZqrTnq" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-server"></i></span>
-                    <span class="tile-text"><strong>SSRS</strong><span>srcorpssrs · Data Validated</span></span>
+                  <a
+                    class="link-tile"
+                    href="http://www.google.com/url?q=http%3A%2F%2Fsrcorpssrs%2Freports%2Fbrowse%2FReports%2FRetail%2FData%2520Validated&amp;sa=D&amp;sntz=1&amp;usg=AOvVaw3YI8SBIzNk5mIphIZqrTnq"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-server"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>SSRS</strong
+                      ><span>srcorpssrs · Data Validated</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://analytics.placer.ai/insights/venues/675697230d78d16b7ac6bcc4/custom-report?competitor=%5B%5D&amp;filter=%5B%7B%22date%22%3A%7B%22key%22%3A%22last_full_12_months%22%2C%22name%22%3A%22Last+full+12+months%22%2C%22chosenLabel%22%3A%22Last+full+12+months%22%2C%22end%22%3A%222025-04-30%22%2C%22start%22%3A%222024-05-01%22%7D%7D%5D" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-location-dot"></i></span>
-                    <span class="tile-text"><strong>Placer</strong><span>analytics.placer.ai</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://analytics.placer.ai/insights/venues/675697230d78d16b7ac6bcc4/custom-report?competitor=%5B%5D&amp;filter=%5B%7B%22date%22%3A%7B%22key%22%3A%22last_full_12_months%22%2C%22name%22%3A%22Last+full+12+months%22%2C%22chosenLabel%22%3A%22Last+full+12+months%22%2C%22end%22%3A%222025-04-30%22%2C%22start%22%3A%222024-05-01%22%7D%7D%5D"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-location-dot"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Placer</strong
+                      ><span>analytics.placer.ai</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://login.adaptiveinsights.com/app" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-sack-dollar"></i></span>
-                    <span class="tile-text"><strong>Adaptive</strong><span>adaptiveinsights.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://login.adaptiveinsights.com/app"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-sack-dollar"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Adaptive</strong
+                      ><span>adaptiveinsights.com</span></span
+                    >
                   </a>
                 </div>
               </section>
@@ -104,25 +221,75 @@
               <section class="link-group" data-group="ops">
                 <h3 class="link-group-title">Operations</h3>
                 <div class="tile-grid">
-                  <a class="link-tile" href="https://gwproducer.goodwillindy.org/" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-boxes-stacked"></i></span>
-                    <span class="tile-text"><strong>Producer App</strong><span>gwproducer.goodwillindy.org</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://gwproducer.goodwillindy.org/"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-boxes-stacked"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Producer App</strong
+                      ><span>gwproducer.goodwillindy.org</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://gwproducer.goodwillindy.org/admin" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-user-gear"></i></span>
-                    <span class="tile-text"><strong>Producer App Admin</strong><span>gwproducer · /admin</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://gwproducer.goodwillindy.org/admin"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-user-gear"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Producer App Admin</strong
+                      ><span>gwproducer · /admin</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://tellermatetouchcloud.com/stats/Dashboard" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-cash-register"></i></span>
-                    <span class="tile-text"><strong>Tellermate Cloud</strong><span>tellermatetouchcloud.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://tellermatetouchcloud.com/stats/Dashboard"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-cash-register"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Tellermate Cloud</strong
+                      ><span>tellermatetouchcloud.com</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://app.limblecmms.com/customDashboard/179192" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-trailer"></i></span>
-                    <span class="tile-text"><strong>Trailer Inventory (Limble)</strong><span>app.limblecmms.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://app.limblecmms.com/customDashboard/179192"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-trailer"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Trailer Inventory (Limble)</strong
+                      ><span>app.limblecmms.com</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://app.smartsheet.com/r/template-gallery?category=All+templates" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-table-cells"></i></span>
-                    <span class="tile-text"><strong>Smartsheet</strong><span>app.smartsheet.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://app.smartsheet.com/r/template-gallery?category=All+templates"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-table-cells"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Smartsheet</strong
+                      ><span>app.smartsheet.com</span></span
+                    >
                   </a>
                 </div>
               </section>
@@ -130,25 +297,72 @@
               <section class="link-group" data-group="company">
                 <h3 class="link-group-title">Company</h3>
                 <div class="tile-grid">
-                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/tstestbed/applications" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-laptop-code"></i></span>
-                    <span class="tile-text"><strong>IT Apps</strong><span>Google Sites</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://sites.google.com/goodwillindy.org/tstestbed/applications"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-laptop-code"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>IT Apps</strong><span>Google Sites</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/goodwillindyretail/home" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-store"></i></span>
-                    <span class="tile-text"><strong>Retail Site</strong><span>Google Sites</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://sites.google.com/goodwillindy.org/goodwillindyretail/home"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-store"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Retail Site</strong
+                      ><span>Google Sites</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/connect?pli=1" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-people-group"></i></span>
-                    <span class="tile-text"><strong>Goodwill Connect</strong><span>Google Sites</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://sites.google.com/goodwillindy.org/connect?pli=1"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-people-group"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Goodwill Connect</strong
+                      ><span>Google Sites</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://sites.google.com/goodwillindy.org/adhub/home" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-sitemap"></i></span>
-                    <span class="tile-text"><strong>AD Hub</strong><span>Google Sites</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://sites.google.com/goodwillindy.org/adhub/home"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-sitemap"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>AD Hub</strong><span>Google Sites</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://app.slack.com/client/TDH96NK39/CDGD9V2JZ" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-brands fa-slack"></i></span>
-                    <span class="tile-text"><strong>Slack</strong><span>app.slack.com</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://app.slack.com/client/TDH96NK39/CDGD9V2JZ"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-brands fa-slack"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Slack</strong><span>app.slack.com</span></span
+                    >
                   </a>
                 </div>
               </section>
@@ -156,46 +370,137 @@
               <section class="link-group" data-group="drive">
                 <h3 class="link-group-title">Drive &amp; Sheets</h3>
                 <div class="tile-grid">
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1ZR9q2zijgYbtTTfoVS4fVjdmo_RVwVA7" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Analytics Folder</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1ZR9q2zijgYbtTTfoVS4fVjdmo_RVwVA7"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Analytics Folder</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1CqBIG-OuWs7oE5NrzlvVmBSHS6LeUpie" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Regional Trackers</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1CqBIG-OuWs7oE5NrzlvVmBSHS6LeUpie"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Regional Trackers</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1LYenTCor1q1VYKLFfNR0GwEe56SLuC9W" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Wage Trackers</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1LYenTCor1q1VYKLFfNR0GwEe56SLuC9W"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Wage Trackers</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1qAHZfHaga6FkCjgcvrAJSqrftp0Dp6Ye" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>O/S Regional Logs</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1qAHZfHaga6FkCjgcvrAJSqrftp0Dp6Ye"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>O/S Regional Logs</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1-PAdYc42LFMUfVPjPpq_NVh2HDVPMob6" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Safe Logs</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1-PAdYc42LFMUfVPjPpq_NVh2HDVPMob6"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Safe Logs</strong><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1sOQ2vv85IByiMMmNy-hvqDYAgqHwiSsh" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Production Quotas</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1sOQ2vv85IByiMMmNy-hvqDYAgqHwiSsh"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Production Quotas</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://drive.google.com/drive/folders/1YGc0q7Fiw6DMuybwClVnavQgd0vKLV5z" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-regular fa-folder"></i></span>
-                    <span class="tile-text"><strong>Retail Spreadsheets</strong><span>Google Drive</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://drive.google.com/drive/folders/1YGc0q7Fiw6DMuybwClVnavQgd0vKLV5z"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-regular fa-folder"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Retail Spreadsheets</strong
+                      ><span>Google Drive</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://docs.google.com/spreadsheets/d/1DqFcNPDY3E71qIdt8MggR-Ib2rrGFTXJZ9bn72ANKy4/edit?gid=771848990#gid=771848990" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-table"></i></span>
-                    <span class="tile-text"><strong>Inventory Count Form</strong><span>Google Sheets</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://docs.google.com/spreadsheets/d/1DqFcNPDY3E71qIdt8MggR-Ib2rrGFTXJZ9bn72ANKy4/edit?gid=771848990#gid=771848990"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-table"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Inventory Count Form</strong
+                      ><span>Google Sheets</span></span
+                    >
                   </a>
-                  <a class="link-tile" href="https://docs.google.com/spreadsheets/d/1Uj7N_tzM2miR5VoCfZAUxgEPULsOQ7oRhBRT1UJH4_I/edit?gid=232272976#gid=232272976" target="_blank" rel="noopener">
-                    <span class="link-ico"><i class="fa-solid fa-table"></i></span>
-                    <span class="tile-text"><strong>Retail Salaries &amp; Wages</strong><span>Google Sheets</span></span>
+                  <a
+                    class="link-tile"
+                    href="https://docs.google.com/spreadsheets/d/1Uj7N_tzM2miR5VoCfZAUxgEPULsOQ7oRhBRT1UJH4_I/edit?gid=232272976#gid=232272976"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    <span class="link-ico"
+                      ><i class="fa-solid fa-table"></i
+                    ></span>
+                    <span class="tile-text"
+                      ><strong>Retail Salaries &amp; Wages</strong
+                      ><span>Google Sheets</span></span
+                    >
                   </a>
                 </div>
               </section>
 
-              <p class="links-empty" id="links-empty" hidden>No links match that search.</p>
+              <p class="links-empty" id="links-empty" hidden>
+                No links match that search.
+              </p>
             </div>
           </section>
 
@@ -203,7 +508,12 @@
             <!-- Every checkbox line in every note, grouped by note -->
             <section class="card tasks-card">
               <header class="card-head">
-                <h2><i class="fa-regular fa-square-check"></i> Tasks <span class="count" id="home-tasks-count" title="Open tasks">0</span></h2>
+                <h2>
+                  <i class="fa-regular fa-square-check"></i> Tasks
+                  <span class="count" id="home-tasks-count" title="Open tasks"
+                    >0</span
+                  >
+                </h2>
                 <a class="link-more" href="#notes">Open notes</a>
               </header>
               <div class="tasks-progress" id="home-tasks-progress" hidden></div>
@@ -211,7 +521,10 @@
             </section>
             <section class="card">
               <header class="card-head">
-                <h2>Active projects <span class="count" id="home-projects-count">0</span></h2>
+                <h2>
+                  Active projects
+                  <span class="count" id="home-projects-count">0</span>
+                </h2>
                 <a class="link-more" href="#projects">View all</a>
               </header>
               <div class="mini-list" id="home-projects"></div>
@@ -226,15 +539,36 @@
           <header class="embed-head">
             <div class="embed-title">
               <span class="icon-badge"><i class="fa-solid fa-filter"></i></span>
-              <div><h2>Analytics Funnel</h2><p>Google Apps Script web app</p></div>
+              <div>
+                <h2>Analytics Funnel</h2>
+                <p>Google Apps Script web app</p>
+              </div>
             </div>
             <div class="embed-actions">
-              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
-              <a class="btn btn-sm" href="https://script.google.com/a/macros/goodwillindy.org/s/AKfycby0f7r1pawRBOu1LELTf6ihSFZ_oyVeqosMDDC5dq4QU6SsE_QQIs274TXxNfxSMIc/exec" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                data-reload
+                title="Reload"
+              >
+                <i class="fa-solid fa-rotate-right"></i><span>Reload</span>
+              </button>
+              <a
+                class="btn btn-sm"
+                href="https://script.google.com/a/macros/goodwillindy.org/s/AKfycby0f7r1pawRBOu1LELTf6ihSFZ_oyVeqosMDDC5dq4QU6SsE_QQIs274TXxNfxSMIc/exec"
+                target="_blank"
+                rel="noopener"
+                title="Open in new tab"
+                ><i class="fa-solid fa-arrow-up-right-from-square"></i
+                ><span>Open in new tab</span></a
+              >
             </div>
           </header>
           <div class="embed-body">
-            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading Analytics Funnel…</div>
+            <div class="embed-loading">
+              <i class="fa-solid fa-spinner fa-spin"></i> Loading Analytics
+              Funnel…
+            </div>
             <iframe
               id="analytics-funnel"
               name="content-frame"
@@ -251,34 +585,87 @@
         <section class="card embed">
           <header class="embed-head">
             <div class="embed-title">
-              <span class="icon-badge"><i class="fa-solid fa-chart-column"></i></span>
-              <div><h2>Retail Reports</h2><p>Domo dashboard page</p></div>
+              <span class="icon-badge"
+                ><i class="fa-solid fa-chart-column"></i
+              ></span>
+              <div>
+                <h2>Retail Reports</h2>
+                <p>Domo dashboard page</p>
+              </div>
             </div>
             <div class="embed-actions">
-              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
-              <a class="btn btn-sm" href="https://embed.domo.com/embed/pages/MZB0Q" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                data-reload
+                title="Reload"
+              >
+                <i class="fa-solid fa-rotate-right"></i><span>Reload</span>
+              </button>
+              <a
+                class="btn btn-sm"
+                href="https://embed.domo.com/embed/pages/MZB0Q"
+                target="_blank"
+                rel="noopener"
+                title="Open in new tab"
+                ><i class="fa-solid fa-arrow-up-right-from-square"></i
+                ><span>Open in new tab</span></a
+              >
             </div>
           </header>
           <div class="embed-body is-tall">
-            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading Retail Reports…</div>
-            <iframe id="retail-reports" title="Retail Reports" data-src="https://embed.domo.com/embed/pages/MZB0Q"></iframe>
+            <div class="embed-loading">
+              <i class="fa-solid fa-spinner fa-spin"></i> Loading Retail
+              Reports…
+            </div>
+            <iframe
+              id="retail-reports"
+              title="Retail Reports"
+              data-src="https://embed.domo.com/embed/pages/MZB0Q"
+            ></iframe>
           </div>
         </section>
 
         <section class="card embed">
           <header class="embed-head">
             <div class="embed-title">
-              <span class="icon-badge"><i class="fa-solid fa-chart-simple"></i></span>
-              <div><h2>Bar Chart</h2><p>Domo card</p></div>
+              <span class="icon-badge"
+                ><i class="fa-solid fa-chart-simple"></i
+              ></span>
+              <div>
+                <h2>Bar Chart</h2>
+                <p>Domo card</p>
+              </div>
             </div>
             <div class="embed-actions">
-              <button type="button" class="btn btn-sm btn-ghost" data-reload title="Reload"><i class="fa-solid fa-rotate-right"></i><span>Reload</span></button>
-              <a class="btn btn-sm" href="https://embed.domo.com/cards/LZBNg" target="_blank" rel="noopener" title="Open in new tab"><i class="fa-solid fa-arrow-up-right-from-square"></i><span>Open in new tab</span></a>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                data-reload
+                title="Reload"
+              >
+                <i class="fa-solid fa-rotate-right"></i><span>Reload</span>
+              </button>
+              <a
+                class="btn btn-sm"
+                href="https://embed.domo.com/cards/LZBNg"
+                target="_blank"
+                rel="noopener"
+                title="Open in new tab"
+                ><i class="fa-solid fa-arrow-up-right-from-square"></i
+                ><span>Open in new tab</span></a
+              >
             </div>
           </header>
           <div class="embed-body">
-            <div class="embed-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading chart…</div>
-            <iframe id="bar-chart" title="Bar Chart" data-src="https://embed.domo.com/cards/LZBNg"></iframe>
+            <div class="embed-loading">
+              <i class="fa-solid fa-spinner fa-spin"></i> Loading chart…
+            </div>
+            <iframe
+              id="bar-chart"
+              title="Bar Chart"
+              data-src="https://embed.domo.com/cards/LZBNg"
+            ></iframe>
           </div>
         </section>
       </section>
@@ -286,53 +673,229 @@
       <!-- ================= Notes ================= -->
       <section class="view" data-view="notes" id="view-notes" hidden>
         <div class="page-head">
-          <div><h1>Notes</h1><p>Saved in this browser. Use Data → Export backup to keep a copy.</p></div>
+          <div>
+            <h1>Notes</h1>
+            <p>
+              Saved in this browser. Use Data → Export backup to keep a copy.
+            </p>
+          </div>
         </div>
         <div class="notes-layout">
           <details class="card composer" id="note-composer" open>
             <summary class="card-head">
-              <h2 id="composer-heading"><i class="fa-solid fa-pen-to-square"></i> New note</h2>
+              <h2 id="composer-heading">
+                <i class="fa-solid fa-pen-to-square"></i> New note
+              </h2>
               <span class="composer-tools">
-                <button type="button" class="btn btn-sm btn-ghost btn-icon" id="note-expand" title="Expand editor" aria-label="Expand editor"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost btn-icon"
+                  id="note-expand"
+                  title="Expand editor"
+                  aria-label="Expand editor"
+                >
+                  <i class="fa-solid fa-up-right-and-down-left-from-center"></i>
+                </button>
                 <i class="fa-solid fa-chevron-down chev"></i>
               </span>
             </summary>
             <form id="note-form">
               <div class="card-body stack">
                 <div class="field-row">
-                  <label class="field"><span>Title</span><input class="input" type="text" id="note-title" placeholder="e.g. Weekly ops sync" required /></label>
-                  <label class="field"><span>Date</span><input class="input" type="date" id="note-date" required /></label>
+                  <label class="field"
+                    ><span>Title</span
+                    ><input
+                      class="input"
+                      type="text"
+                      id="note-title"
+                      placeholder="e.g. Weekly ops sync"
+                      required
+                  /></label>
+                  <label class="field"
+                    ><span>Date</span
+                    ><input class="input" type="date" id="note-date" required
+                  /></label>
                 </div>
                 <div class="field editor-field">
                   <span id="note-editor-label">Content</span>
                   <div class="editor">
-                    <div class="toolbar" id="note-toolbar" role="toolbar" aria-label="Formatting">
-                      <button type="button" class="tb" data-cmd="heading" title="Section heading" aria-label="Section heading"><i class="fa-solid fa-heading"></i></button>
+                    <div
+                      class="toolbar"
+                      id="note-toolbar"
+                      role="toolbar"
+                      aria-label="Formatting"
+                    >
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="heading"
+                        title="Section heading"
+                        aria-label="Section heading"
+                      >
+                        <i class="fa-solid fa-heading"></i>
+                      </button>
                       <span class="tb-sep"></span>
-                      <button type="button" class="tb" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><i class="fa-solid fa-bold"></i></button>
-                      <button type="button" class="tb" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i class="fa-solid fa-italic"></i></button>
-                      <button type="button" class="tb" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline"><i class="fa-solid fa-underline"></i></button>
-                      <button type="button" class="tb" data-cmd="strikeThrough" title="Strikethrough" aria-label="Strikethrough"><i class="fa-solid fa-strikethrough"></i></button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="bold"
+                        title="Bold (Ctrl+B)"
+                        aria-label="Bold"
+                      >
+                        <i class="fa-solid fa-bold"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="italic"
+                        title="Italic (Ctrl+I)"
+                        aria-label="Italic"
+                      >
+                        <i class="fa-solid fa-italic"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="underline"
+                        title="Underline (Ctrl+U)"
+                        aria-label="Underline"
+                      >
+                        <i class="fa-solid fa-underline"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="strikeThrough"
+                        title="Strikethrough"
+                        aria-label="Strikethrough"
+                      >
+                        <i class="fa-solid fa-strikethrough"></i>
+                      </button>
                       <span class="tb-menu-anchor">
-                        <button type="button" class="tb" id="hl-btn" title="Highlight" aria-label="Highlight"><i class="fa-solid fa-highlighter"></i><span class="tb-swatch" id="hl-swatch"></span></button>
+                        <button
+                          type="button"
+                          class="tb"
+                          id="hl-btn"
+                          title="Highlight"
+                          aria-label="Highlight"
+                        >
+                          <i class="fa-solid fa-highlighter"></i
+                          ><span class="tb-swatch" id="hl-swatch"></span>
+                        </button>
                         <div class="hl-menu" id="hl-menu" hidden>
-                          <button type="button" data-hl="#fde68a" style="background: #fde68a" title="Yellow" aria-label="Yellow highlight"></button>
-                          <button type="button" data-hl="#bbf7d0" style="background: #bbf7d0" title="Green" aria-label="Green highlight"></button>
-                          <button type="button" data-hl="#bfdbfe" style="background: #bfdbfe" title="Blue" aria-label="Blue highlight"></button>
-                          <button type="button" data-hl="#fbcfe8" style="background: #fbcfe8" title="Pink" aria-label="Pink highlight"></button>
-                          <button type="button" data-hl="transparent" class="none" title="No highlight" aria-label="Remove highlight">✕</button>
+                          <button
+                            type="button"
+                            data-hl="#fde68a"
+                            style="background: #fde68a"
+                            title="Yellow"
+                            aria-label="Yellow highlight"
+                          ></button>
+                          <button
+                            type="button"
+                            data-hl="#bbf7d0"
+                            style="background: #bbf7d0"
+                            title="Green"
+                            aria-label="Green highlight"
+                          ></button>
+                          <button
+                            type="button"
+                            data-hl="#bfdbfe"
+                            style="background: #bfdbfe"
+                            title="Blue"
+                            aria-label="Blue highlight"
+                          ></button>
+                          <button
+                            type="button"
+                            data-hl="#fbcfe8"
+                            style="background: #fbcfe8"
+                            title="Pink"
+                            aria-label="Pink highlight"
+                          ></button>
+                          <button
+                            type="button"
+                            data-hl="transparent"
+                            class="none"
+                            title="No highlight"
+                            aria-label="Remove highlight"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </span>
                       <span class="tb-sep"></span>
-                      <button type="button" class="tb" data-cmd="insertUnorderedList" title="Bullets (type - then space)" aria-label="Bullets"><i class="fa-solid fa-list-ul"></i></button>
-                      <button type="button" class="tb" data-cmd="insertOrderedList" title="Numbered list (type 1. then space)" aria-label="Numbered list"><i class="fa-solid fa-list-ol"></i></button>
-                      <button type="button" class="tb" data-cmd="checklist" title="Checklist (type [] then space)" aria-label="Checklist"><i class="fa-regular fa-square-check"></i></button>
-                      <button type="button" class="tb" data-cmd="outdent" title="Outdent (Shift+Tab)" aria-label="Outdent"><i class="fa-solid fa-outdent"></i></button>
-                      <button type="button" class="tb" data-cmd="indent" title="Indent / sub-bullet (Tab)" aria-label="Indent"><i class="fa-solid fa-indent"></i></button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="insertUnorderedList"
+                        title="Bullets (type - then space)"
+                        aria-label="Bullets"
+                      >
+                        <i class="fa-solid fa-list-ul"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="insertOrderedList"
+                        title="Numbered list (type 1. then space)"
+                        aria-label="Numbered list"
+                      >
+                        <i class="fa-solid fa-list-ol"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="checklist"
+                        title="Checklist (type [] then space)"
+                        aria-label="Checklist"
+                      >
+                        <i class="fa-regular fa-square-check"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="outdent"
+                        title="Outdent (Shift+Tab)"
+                        aria-label="Outdent"
+                      >
+                        <i class="fa-solid fa-outdent"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="indent"
+                        title="Indent / sub-bullet (Tab)"
+                        aria-label="Indent"
+                      >
+                        <i class="fa-solid fa-indent"></i>
+                      </button>
                       <span class="tb-sep"></span>
-                      <button type="button" class="tb" data-cmd="link" title="Link (Ctrl+K)" aria-label="Link"><i class="fa-solid fa-link"></i></button>
-                      <button type="button" class="tb" data-cmd="divider" title="Divider line" aria-label="Divider line"><i class="fa-solid fa-minus"></i></button>
-                      <button type="button" class="tb" data-cmd="removeFormat" title="Clear formatting" aria-label="Clear formatting"><i class="fa-solid fa-eraser"></i></button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="link"
+                        title="Link (Ctrl+K)"
+                        aria-label="Link"
+                      >
+                        <i class="fa-solid fa-link"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="divider"
+                        title="Divider line"
+                        aria-label="Divider line"
+                      >
+                        <i class="fa-solid fa-minus"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="tb"
+                        data-cmd="removeFormat"
+                        title="Clear formatting"
+                        aria-label="Clear formatting"
+                      >
+                        <i class="fa-solid fa-eraser"></i>
+                      </button>
                     </div>
                     <div class="editor-wrap">
                       <div
@@ -342,20 +905,31 @@
                         role="textbox"
                         aria-multiline="true"
                         aria-labelledby="note-editor-label"
-                        data-placeholder="Type your note… Use the toolbar, or type “1.” or “-” and a space to start a list."
+                        data-placeholder="Type your note…"
                       ></div>
                     </div>
                   </div>
                   <p class="editor-hint">
-                    <kbd>Ctrl</kbd>+<kbd>B</kbd> bold · <kbd>Tab</kbd> sub-bullet · <kbd>Shift</kbd>+<kbd>Tab</kbd> back out ·
-                    start a line with <kbd>1.</kbd> <kbd>-</kbd> or <kbd>[]</kbd> and a space for numbers, bullets or a checklist
+                    <kbd>Ctrl</kbd>+<kbd>B</kbd> bold ·
+                    <kbd>Tab</kbd> sub-bullet · <kbd>Shift</kbd>+<kbd>Tab</kbd>
+                    back out · start a line with <kbd>1.</kbd> <kbd>-</kbd> or
+                    <kbd>[]</kbd> and a space for numbers, bullets or a
+                    checklist
                   </p>
                 </div>
               </div>
               <div class="card-foot">
                 <span class="draft-status" id="note-draft-status"></span>
-                <button type="button" class="btn btn-ghost" id="note-clear-btn">Clear</button>
-                <button type="submit" class="btn btn-primary" id="note-save-btn"><i class="fa-solid fa-check"></i> Save note</button>
+                <button type="button" class="btn btn-ghost" id="note-clear-btn">
+                  Clear
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  id="note-save-btn"
+                >
+                  <i class="fa-solid fa-check"></i> Save note
+                </button>
               </div>
             </form>
           </details>
@@ -365,8 +939,19 @@
             <div class="list-toolbar">
               <h2>All notes <span class="count" id="notes-count">0</span></h2>
               <div class="list-tools">
-                <label class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="note-search" placeholder="Search titles and note text" aria-label="Search notes" /></label>
-                <select class="mini-select" id="note-sort" aria-label="Sort notes">
+                <label class="search"
+                  ><i class="fa-solid fa-magnifying-glass"></i
+                  ><input
+                    type="search"
+                    id="note-search"
+                    placeholder="Search titles and note text"
+                    aria-label="Search notes"
+                /></label>
+                <select
+                  class="mini-select"
+                  id="note-sort"
+                  aria-label="Sort notes"
+                >
                   <option value="new">Newest</option>
                   <option value="old">Oldest</option>
                   <option value="az">A–Z</option>
@@ -387,7 +972,10 @@
       <!-- ================= Projects ================= -->
       <section class="view" data-view="projects" id="view-projects" hidden>
         <div class="page-head">
-          <div><h1>Projects</h1><p id="projects-summary"></p></div>
+          <div>
+            <h1>Projects</h1>
+            <p id="projects-summary"></p>
+          </div>
         </div>
         <div class="split">
           <details class="card composer" open>
@@ -397,27 +985,67 @@
             </summary>
             <form id="project-form">
               <div class="card-body stack">
-                <label class="field"><span>Project name</span><input class="input" type="text" id="project-name" placeholder="e.g. Q3 quota review" required /></label>
+                <label class="field"
+                  ><span>Project name</span
+                  ><input
+                    class="input"
+                    type="text"
+                    id="project-name"
+                    placeholder="e.g. Q3 quota review"
+                    required
+                /></label>
                 <div class="field-row even">
-                  <label class="field"><span>Start date</span><input class="input" type="date" id="project-start-date" required /></label>
-                  <label class="field"><span>Due date <em>optional</em></span><input class="input" type="date" id="project-due-date" /></label>
+                  <label class="field"
+                    ><span>Start date</span
+                    ><input
+                      class="input"
+                      type="date"
+                      id="project-start-date"
+                      required
+                  /></label>
+                  <label class="field"
+                    ><span>Due date <em>optional</em></span
+                    ><input class="input" type="date" id="project-due-date"
+                  /></label>
                 </div>
-                <label class="field"><span>Description <em>optional</em></span><textarea class="textarea" id="project-description" rows="3" placeholder="What does done look like?"></textarea></label>
+                <label class="field"
+                  ><span>Description <em>optional</em></span
+                  ><textarea
+                    class="textarea"
+                    id="project-description"
+                    rows="3"
+                    placeholder="What does done look like?"
+                  ></textarea>
+                </label>
               </div>
               <div class="card-foot">
-                <button type="button" class="btn btn-ghost" id="clear-project-form">Clear</button>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add project</button>
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  id="clear-project-form"
+                >
+                  Clear
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fa-solid fa-plus"></i> Add project
+                </button>
               </div>
             </form>
           </details>
 
           <div class="stack-lg">
             <section>
-              <div class="list-toolbar"><h2>Active <span class="count" id="active-count">0</span></h2></div>
+              <div class="list-toolbar">
+                <h2>Active <span class="count" id="active-count">0</span></h2>
+              </div>
               <div class="project-grid" id="active-projects-list"></div>
             </section>
             <section>
-              <div class="list-toolbar"><h2>Completed <span class="count" id="completed-count">0</span></h2></div>
+              <div class="list-toolbar">
+                <h2>
+                  Completed <span class="count" id="completed-count">0</span>
+                </h2>
+              </div>
               <div id="completed-projects-list"></div>
             </section>
           </div>
@@ -427,11 +1055,21 @@
 
     <!-- ================= Phone navigation ================= -->
     <nav class="bottom-nav mobile-only" aria-label="Sections">
-      <a class="bn-item" href="#home" data-nav="home"><i class="fa-solid fa-house"></i>Home</a>
-      <a class="bn-item" href="#notes" data-nav="notes"><i class="fa-solid fa-note-sticky"></i>Notes</a>
-      <a class="bn-item" href="#projects" data-nav="projects"><i class="fa-solid fa-list-check"></i>Projects</a>
-      <a class="bn-item" href="#fiscal" data-nav="fiscal"><i class="fa-solid fa-calendar-days"></i>Fiscal</a>
-      <button type="button" class="bn-item" id="more-btn"><i class="fa-solid fa-ellipsis"></i>More</button>
+      <a class="bn-item" href="#home" data-nav="home"
+        ><i class="fa-solid fa-house"></i>Home</a
+      >
+      <a class="bn-item" href="#notes" data-nav="notes"
+        ><i class="fa-solid fa-note-sticky"></i>Notes</a
+      >
+      <a class="bn-item" href="#projects" data-nav="projects"
+        ><i class="fa-solid fa-list-check"></i>Projects</a
+      >
+      <a class="bn-item" href="#fiscal" data-nav="fiscal"
+        ><i class="fa-solid fa-calendar-days"></i>Fiscal</a
+      >
+      <button type="button" class="bn-item" id="more-btn">
+        <i class="fa-solid fa-ellipsis"></i>More
+      </button>
     </nav>
 
     <div id="more-sheet" hidden>
@@ -440,26 +1078,49 @@
         <div class="sheet-grip"></div>
         <div class="sheet-head">
           <h2>More</h2>
-          <button type="button" class="btn btn-icon btn-ghost" data-close-more aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+          <button
+            type="button"
+            class="btn btn-icon btn-ghost"
+            data-close-more
+            aria-label="Close"
+          >
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
         <div class="sheet-section">
           <div class="sheet-label">Dashboards</div>
           <div class="more-grid">
-            <a class="more-item" href="#reports" data-nav="reports"><span class="link-ico"><i class="fa-solid fa-chart-column"></i></span>Reports</a>
-            <a class="more-item" href="#funnel" data-nav="funnel"><span class="link-ico"><i class="fa-solid fa-filter"></i></span>Analytics Funnel</a>
+            <a class="more-item" href="#reports" data-nav="reports"
+              ><span class="link-ico"
+                ><i class="fa-solid fa-chart-column"></i></span
+              >Reports</a
+            >
+            <a class="more-item" href="#funnel" data-nav="funnel"
+              ><span class="link-ico"><i class="fa-solid fa-filter"></i></span
+              >Analytics Funnel</a
+            >
           </div>
         </div>
         <div class="sheet-section">
           <div class="sheet-label">Data backup</div>
           <div class="sheet-buttons">
-            <button type="button" class="btn" data-action="import"><i class="fa-solid fa-file-import"></i> Import</button>
-            <button type="button" class="btn" data-action="export"><i class="fa-solid fa-file-export"></i> Export</button>
+            <button type="button" class="btn" data-action="import">
+              <i class="fa-solid fa-file-import"></i> Import
+            </button>
+            <button type="button" class="btn" data-action="export">
+              <i class="fa-solid fa-file-export"></i> Export
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <input type="file" id="import-file" accept=".json,application/json" hidden />
+    <input
+      type="file"
+      id="import-file"
+      accept=".json,application/json"
+      hidden
+    />
     <div class="toasts" id="toasts" aria-live="polite"></div>
 
     <script src="app.js"></script>
